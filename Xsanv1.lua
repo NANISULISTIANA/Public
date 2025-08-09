@@ -262,9 +262,10 @@ local function createFloatingIcon()
     FloatingGUI.Parent = player:WaitForChild("PlayerGui")
     FloatingGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     FloatingGUI.ResetOnSpawn = false
+    FloatingGUI.IgnoreGuiInset = true
 
     -- Create floating icon frame
-    local FloatingIcon = Instance.new("Frame")
+    local FloatingIcon = Instance.new("ImageButton")  -- Changed to ImageButton for better input
     FloatingIcon.Name = "FloatingIcon"
     FloatingIcon.Parent = FloatingGUI
     FloatingIcon.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -272,8 +273,11 @@ local function createFloatingIcon()
     FloatingIcon.BorderSizePixel = 0
     FloatingIcon.Position = UDim2.new(0, 20, 0.5, -30)
     FloatingIcon.Size = UDim2.new(0, 60, 0, 60)
-    FloatingIcon.ZIndex = 10
-    FloatingIcon.Active = true -- Make it active for input detection
+    FloatingIcon.ZIndex = 1000
+    FloatingIcon.Active = true
+    FloatingIcon.Draggable = false -- We'll handle dragging manually
+    FloatingIcon.Image = ""  -- No default image
+    FloatingIcon.ImageTransparency = 1  -- Hide default image
 
     -- Add corner radius
     local IconCorner = Instance.new("UICorner")
@@ -295,6 +299,7 @@ local function createFloatingIcon()
     IconImage.Size = UDim2.new(0.8, 0, 0.8, 0)
     IconImage.Image = "rbxassetid://136555589792977" -- Fish icon
     IconImage.ImageColor3 = Color3.fromRGB(0, 255, 0)
+    IconImage.ZIndex = 1001
 
     -- Alternative text if image fails
     local IconText = Instance.new("TextLabel")
@@ -307,6 +312,7 @@ local function createFloatingIcon()
     IconText.TextColor3 = Color3.fromRGB(0, 255, 0)
     IconText.TextScaled = true
     IconText.Visible = false
+    IconText.ZIndex = 1001
 
     -- Show text if image fails to load
     connections[#connections + 1] = IconImage.ImageFailed:Connect(function()
@@ -314,22 +320,24 @@ local function createFloatingIcon()
         IconText.Visible = true
     end)
 
-    -- Make icon draggable
+    -- Variables for dragging
     local iconDragging = false
     local iconDragStart = nil
     local iconStartPos = nil
 
-    connections[#connections + 1] = FloatingIcon.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            iconDragging = true
-            iconDragStart = input.Position
-            iconStartPos = FloatingIcon.Position
-        end
+    -- Mouse Button Down - Start dragging
+    connections[#connections + 1] = FloatingIcon.MouseButton1Down:Connect(function()
+        iconDragging = true
+        local mouse = player:GetMouse()
+        iconDragStart = Vector2.new(mouse.X, mouse.Y)
+        iconStartPos = FloatingIcon.Position
     end)
 
+    -- Mouse Move - Handle dragging
     connections[#connections + 1] = UserInputService.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and iconDragging then
-            local delta = input.Position - iconDragStart
+        if iconDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mouse = player:GetMouse()
+            local delta = Vector2.new(mouse.X, mouse.Y) - iconDragStart
             FloatingIcon.Position = UDim2.new(
                 iconStartPos.X.Scale,
                 iconStartPos.X.Offset + delta.X,
@@ -339,37 +347,33 @@ local function createFloatingIcon()
         end
     end)
 
+    -- Mouse Button Up - Stop dragging
     connections[#connections + 1] = UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             iconDragging = false
         end
     end)
 
-    -- Floating icon button functionality
-    local IconButton = Instance.new("TextButton")
-    IconButton.Name = "IconButton"
-    IconButton.Parent = FloatingIcon
-    IconButton.BackgroundTransparency = 1
-    IconButton.Size = UDim2.new(1, 0, 1, 0)
-    IconButton.Text = ""
-    IconButton.ZIndex = 11
-
-    -- Click animation
-    connections[#connections + 1] = IconButton.MouseEnter:Connect(function()
-        TweenService:Create(FloatingIcon, TweenInfo.new(0.2), {
-            Size = UDim2.new(0, 65, 0, 65),
-            BackgroundTransparency = 0
-        }):Play()
+    -- Click animation and hover effects
+    connections[#connections + 1] = FloatingIcon.MouseEnter:Connect(function()
+        if not iconDragging then
+            TweenService:Create(FloatingIcon, TweenInfo.new(0.2), {
+                Size = UDim2.new(0, 65, 0, 65),
+                BackgroundTransparency = 0
+            }):Play()
+        end
     end)
 
-    connections[#connections + 1] = IconButton.MouseLeave:Connect(function()
-        TweenService:Create(FloatingIcon, TweenInfo.new(0.2), {
-            Size = UDim2.new(0, 60, 0, 60),
-            BackgroundTransparency = 0.1
-        }):Play()
+    connections[#connections + 1] = FloatingIcon.MouseLeave:Connect(function()
+        if not iconDragging then
+            TweenService:Create(FloatingIcon, TweenInfo.new(0.2), {
+                Size = UDim2.new(0, 60, 0, 60),
+                BackgroundTransparency = 0.1
+            }):Play()
+        end
     end)
 
-    return FloatingGUI, IconButton
+    return FloatingGUI, FloatingIcon
 end
 
 -- ===================================================================
@@ -377,7 +381,7 @@ end
 -- ===================================================================
 local function createCompleteGUI()
     -- Create floating icon first
-    local FloatingGUI, IconButton = createFloatingIcon()
+    local FloatingGUI, FloatingIcon = createFloatingIcon()
     
     -- Create main ScreenGui
     local GameXsanGUI = Instance.new("ScreenGui")
@@ -1091,14 +1095,13 @@ local function createCompleteGUI()
     -- ===============================================================
     
     -- Floating icon toggle functionality
-    connections[#connections + 1] = IconButton.MouseButton1Click:Connect(function()
+    connections[#connections + 1] = FloatingIcon.MouseButton1Click:Connect(function()
         isHidden = not isHidden
         GameXsanGUI.Enabled = not isHidden
         
         -- Visual feedback on icon
-        local iconFrame = IconButton.Parent
-        local iconStroke = iconFrame:FindFirstChild("UIStroke")
-        local iconImage = iconFrame:FindFirstChild("IconImage")
+        local iconStroke = FloatingIcon:FindFirstChild("UIStroke")
+        local iconImage = FloatingIcon:FindFirstChild("IconImage")
         
         if isHidden then
             if iconStroke then 
