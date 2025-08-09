@@ -89,8 +89,8 @@ function ZayrosFishingGUI:createGUI()
     
     -- Create main frame with dragging capability
     self.mainFrame = createFrame(self.gui, "MainFrame", 
-        UDim2.new(0, 500, 0, 400), 
-        UDim2.new(0.5, -250, 0.5, -200)
+        UDim2.new(0, 380, 0, 300), 
+        UDim2.new(0.5, -190, 0.5, -150)
     )
     
     -- Add dragging functionality
@@ -140,7 +140,7 @@ end
 
 function ZayrosFishingGUI:createTitleBar()
     local titleBar = createFrame(self.mainFrame, "TitleBar", 
-        UDim2.new(1, 0, 0, 30), 
+        UDim2.new(1, 0, 0, 25), 
         UDim2.new(0, 0, 0, 0)
     )
     titleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -148,7 +148,7 @@ function ZayrosFishingGUI:createTitleBar()
     local title = Instance.new("TextLabel")
     title.Parent = titleBar
     title.Size = UDim2.new(0.7, 0, 1, 0)
-    title.Position = UDim2.new(0, 10, 0, 0)
+    title.Position = UDim2.new(0, 8, 0, 0)
     title.BackgroundTransparency = 1
     title.Text = "Zayros FISHIT v2.0"
     title.TextColor3 = COLORS.Text
@@ -158,8 +158,8 @@ function ZayrosFishingGUI:createTitleBar()
     
     -- Minimize Button
     local minimizeBtn = createButton(titleBar, "MinimizeBtn", "-", 
-        UDim2.new(0, 30, 0, 30), 
-        UDim2.new(1, -70, 0, 0)
+        UDim2.new(0, 25, 0, 25), 
+        UDim2.new(1, -55, 0, 0)
     )
     minimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 193, 7)
     
@@ -170,8 +170,8 @@ function ZayrosFishingGUI:createTitleBar()
     
     -- Close Button
     local closeBtn = createButton(titleBar, "CloseBtn", "X", 
-        UDim2.new(0, 30, 0, 30), 
-        UDim2.new(1, -35, 0, 0)
+        UDim2.new(0, 25, 0, 25), 
+        UDim2.new(1, -28, 0, 0)
     )
     closeBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 34)
     
@@ -187,20 +187,20 @@ end
 
 function ZayrosFishingGUI:createSidebar()
     local sidebar = createFrame(self.mainFrame, "Sidebar", 
-        UDim2.new(0, 150, 1, -30), 
-        UDim2.new(0, 0, 0, 30)
+        UDim2.new(0, 120, 1, -25), 
+        UDim2.new(0, 0, 0, 25)
     )
     sidebar.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
     
     -- Create navigation buttons
     local buttons = {"Main", "Player", "Teleport", "Boats", "Settings"}
-    local buttonHeight = 40
-    local spacing = 5
+    local buttonHeight = 30
+    local spacing = 3
     
     for i, buttonName in ipairs(buttons) do
         local navBtn = createButton(sidebar, buttonName.."Btn", buttonName, 
-            UDim2.new(1, -10, 0, buttonHeight),
-            UDim2.new(0, 5, 0, (buttonHeight + spacing) * (i - 1) + 10)
+            UDim2.new(1, -8, 0, buttonHeight),
+            UDim2.new(0, 4, 0, (buttonHeight + spacing) * (i - 1) + 8)
         )
         
         self:addButtonHoverEffect(navBtn)
@@ -213,8 +213,8 @@ function ZayrosFishingGUI:createSidebar()
     -- Credit label at bottom
     local credit = Instance.new("TextLabel")
     credit.Parent = sidebar
-    credit.Size = UDim2.new(1, 0, 0, 30)
-    credit.Position = UDim2.new(0, 0, 1, -30)
+    credit.Size = UDim2.new(1, 0, 0, 25)
+    credit.Position = UDim2.new(0, 0, 1, -25)
     credit.BackgroundTransparency = 1
     credit.Text = "Made by Doovy :D"
     credit.TextColor3 = COLORS.Text
@@ -224,8 +224,8 @@ end
 
 function ZayrosFishingGUI:createContentArea()
     self.contentFrame = createFrame(self.mainFrame, "ContentFrame", 
-        UDim2.new(1, -150, 1, -30), 
-        UDim2.new(0, 150, 0, 30)
+        UDim2.new(1, -120, 1, -25), 
+        UDim2.new(0, 120, 0, 25)
     )
     self.contentFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
     
@@ -244,7 +244,7 @@ function ZayrosFishingGUI:createFloatingIcon()
     -- Create floating icon that appears when minimized
     self.floatingIcon = Instance.new("Frame")
     self.floatingIcon.Name = "FloatingIcon"
-    self.floatingIcon.Size = UDim2.new(0, 60, 0, 60)
+    self.floatingIcon.Size = UDim2.new(0, 50, 0, 50)
     self.floatingIcon.Position = UDim2.new(0, 20, 0, 100)
     self.floatingIcon.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
     self.floatingIcon.BorderSizePixel = 0
@@ -254,7 +254,7 @@ function ZayrosFishingGUI:createFloatingIcon()
     
     -- Add corner radius
     local iconCorner = Instance.new("UICorner")
-    iconCorner.CornerRadius = UDim.new(0, 30)
+    iconCorner.CornerRadius = UDim.new(0, 25)
     iconCorner.Parent = self.floatingIcon
     
     -- Add icon image/text
@@ -290,7 +290,7 @@ function ZayrosFishingGUI:createFloatingIcon()
     -- Add pulse animation when auto fishing is active
     local pulseAnimation = SERVICES.TweenService:Create(self.floatingIcon,
         TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-        {Size = UDim2.new(0, 70, 0, 70)}
+        {Size = UDim2.new(0, 60, 0, 60)}
     )
     
     -- Store references
@@ -319,7 +319,7 @@ function ZayrosFishingGUI:toggleMinimize()
             -- Animate floating icon in
             local iconTweenIn = SERVICES.TweenService:Create(self.floatingIcon,
                 TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-                {Size = UDim2.new(0, 60, 0, 60)}
+                {Size = UDim2.new(0, 50, 0, 50)}
             )
             iconTweenIn:Play()
         end)
@@ -349,8 +349,8 @@ function ZayrosFishingGUI:toggleMinimize()
         local tweenIn = SERVICES.TweenService:Create(self.mainFrame,
             TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
             {
-                Size = UDim2.new(0, 500, 0, 400),
-                Position = UDim2.new(0.5, -250, 0.5, -200)
+                Size = UDim2.new(0, 380, 0, 300),
+                Position = UDim2.new(0.5, -190, 0.5, -150)
             }
         )
         
@@ -446,14 +446,14 @@ function ZayrosFishingGUI:createMainPage()
     
     -- Auto Fish Toggle
     local autoFishFrame = createFrame(scrollFrame, "AutoFishFrame", 
-        UDim2.new(1, -20, 0, 60), 
-        UDim2.new(0, 10, 0, 10)
+        UDim2.new(1, -15, 0, 50), 
+        UDim2.new(0, 8, 0, 8)
     )
     
     local autoFishLabel = Instance.new("TextLabel")
     autoFishLabel.Parent = autoFishFrame
     autoFishLabel.Size = UDim2.new(0.7, 0, 1, 0)
-    autoFishLabel.Position = UDim2.new(0, 10, 0, 0)
+    autoFishLabel.Position = UDim2.new(0, 8, 0, 0)
     autoFishLabel.BackgroundTransparency = 1
     autoFishLabel.Text = "Auto Fish (AFK)"
     autoFishLabel.TextColor3 = COLORS.Text
@@ -472,8 +472,8 @@ function ZayrosFishingGUI:createMainPage()
     
     -- Sell All Button
     local sellAllBtn = createButton(scrollFrame, "SellAllBtn", "Sell All Fish", 
-        UDim2.new(1, -20, 0, 40),
-        UDim2.new(0, 10, 0, 80)
+        UDim2.new(1, -15, 0, 35),
+        UDim2.new(0, 8, 0, 65)
     )
     sellAllBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
     
@@ -845,7 +845,7 @@ end
 
 function ZayrosFishingGUI:createToggleSwitch(parent, initialState, callback)
     local switch = Instance.new("Frame")
-    switch.Size = UDim2.new(0, 50, 0, 25)
+    switch.Size = UDim2.new(0, 40, 0, 20)
     switch.BackgroundColor3 = initialState and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 100, 100)
     switch.Parent = parent
     switch.BorderSizePixel = 0
@@ -855,8 +855,8 @@ function ZayrosFishingGUI:createToggleSwitch(parent, initialState, callback)
     corner.Parent = switch
     
     local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 20, 0, 20)
-    knob.Position = initialState and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)
+    knob.Size = UDim2.new(0, 16, 0, 16)
+    knob.Position = initialState and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
     knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     knob.BorderSizePixel = 0
     knob.Parent = switch
@@ -877,7 +877,7 @@ function ZayrosFishingGUI:createToggleSwitch(parent, initialState, callback)
         isOn = not isOn
         
         local switchColor = isOn and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 100, 100)
-        local knobPos = isOn and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)
+        local knobPos = isOn and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
         
         local switchTween = SERVICES.TweenService:Create(switch, 
             TweenInfo.new(0.2, Enum.EasingStyle.Quad),
@@ -912,8 +912,8 @@ function ZayrosFishingGUI:createNotification(message, type, duration)
     }
     
     local notification = Instance.new("Frame")
-    notification.Size = UDim2.new(0, 300, 0, 60)
-    notification.Position = UDim2.new(1, -320, 0, 20)
+    notification.Size = UDim2.new(0, 250, 0, 50)
+    notification.Position = UDim2.new(1, -260, 0, 20)
     notification.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     notification.BorderSizePixel = 0
     notification.Parent = self.gui
@@ -942,7 +942,7 @@ function ZayrosFishingGUI:createNotification(message, type, duration)
     -- Animate in
     local tweenIn = SERVICES.TweenService:Create(notification, 
         TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-        {Position = UDim2.new(1, -320, 0, 20)}
+        {Position = UDim2.new(1, -260, 0, 20)}
     )
     tweenIn:Play()
     
@@ -1179,7 +1179,7 @@ function ZayrosFishingGUI:toggleAutoFish()
             self.iconLabel.Text = "🐟"
             self.iconPulseAnimation:Cancel()
             -- Reset size
-            self.floatingIcon.Size = UDim2.new(0, 60, 0, 60)
+            self.floatingIcon.Size = UDim2.new(0, 50, 0, 50)
         end
     end
 end
