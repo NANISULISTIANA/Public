@@ -273,6 +273,7 @@ local function createFloatingIcon()
     FloatingIcon.Position = UDim2.new(0, 20, 0.5, -30)
     FloatingIcon.Size = UDim2.new(0, 60, 0, 60)
     FloatingIcon.ZIndex = 10
+    FloatingIcon.Active = true -- Make it active for input detection
 
     -- Add corner radius
     local IconCorner = Instance.new("UICorner")
@@ -308,7 +309,7 @@ local function createFloatingIcon()
     IconText.Visible = false
 
     -- Show text if image fails to load
-    IconImage.ImageFailed:Connect(function()
+    connections[#connections + 1] = IconImage.ImageFailed:Connect(function()
         IconImage.Visible = false
         IconText.Visible = true
     end)
@@ -318,7 +319,7 @@ local function createFloatingIcon()
     local iconDragStart = nil
     local iconStartPos = nil
 
-    FloatingIcon.InputBegan:Connect(function(input)
+    connections[#connections + 1] = FloatingIcon.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             iconDragging = true
             iconDragStart = input.Position
@@ -326,7 +327,7 @@ local function createFloatingIcon()
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
+    connections[#connections + 1] = UserInputService.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement and iconDragging then
             local delta = input.Position - iconDragStart
             FloatingIcon.Position = UDim2.new(
@@ -338,7 +339,7 @@ local function createFloatingIcon()
         end
     end)
 
-    UserInputService.InputEnded:Connect(function(input)
+    connections[#connections + 1] = UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             iconDragging = false
         end
@@ -354,14 +355,14 @@ local function createFloatingIcon()
     IconButton.ZIndex = 11
 
     -- Click animation
-    IconButton.MouseEnter:Connect(function()
+    connections[#connections + 1] = IconButton.MouseEnter:Connect(function()
         TweenService:Create(FloatingIcon, TweenInfo.new(0.2), {
             Size = UDim2.new(0, 65, 0, 65),
             BackgroundTransparency = 0
         }):Play()
     end)
 
-    IconButton.MouseLeave:Connect(function()
+    connections[#connections + 1] = IconButton.MouseLeave:Connect(function()
         TweenService:Create(FloatingIcon, TweenInfo.new(0.2), {
             Size = UDim2.new(0, 60, 0, 60),
             BackgroundTransparency = 0.1
