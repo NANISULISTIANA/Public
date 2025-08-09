@@ -238,6 +238,8 @@ function ZayrosFishingGUI:createContentArea()
     self:createSettingsPage()
     -- Show main page by default
     self:navigateToPage("Main")
+end
+
 function ZayrosFishingGUI:createRodStatusPage()
     local rodPage = createFrame(self.contentFrame, "RodStatusPage", 
         UDim2.new(1, 0, 1, 0), 
@@ -422,7 +424,6 @@ function ZayrosFishingGUI:createRodStatusPage()
 
     self.pages = self.pages or {}
     self.pages["Rod Status"] = rodPage
-end
 end
 
 function ZayrosFishingGUI:createFloatingIcon()
