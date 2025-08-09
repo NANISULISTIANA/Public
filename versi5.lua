@@ -103,9 +103,9 @@ local Settings = {
     SmartFishing = false,
     -- New Rod Stats Modification
     ModifyRodStats = false,
-    CustomRodLuck = 175,
+    CustomRodLuck = 1000,
     CustomRodSpeed = 100,
-    CustomRodWeight = 5
+    CustomRodWeight = 5000
 }
 
 -- ===================================================================
