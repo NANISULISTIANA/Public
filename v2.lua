@@ -352,9 +352,11 @@ local function isPlayerAdmin(targetPlayer)
     -- Check for admin gamepass or badges (customize these IDs based on the game)
     local adminGamepasses = {123456, 789012} -- Replace with actual admin gamepass IDs
     for _, gamepassId in ipairs(adminGamepasses) do
-        if game:GetService("MarketplaceService"):UserOwnsGamePassAsync(targetPlayer.UserId, gamepassId) then
-            return true
-        end
+        pcall(function()
+            if game:GetService("MarketplaceService"):UserOwnsGamePassAsync(targetPlayer.UserId, gamepassId) then
+                return true
+            end
+        end)
     end
     
     return false
@@ -579,7 +581,7 @@ end
 --                      ROD STATS MODIFICATION
 -- ===================================================================
 local function modifyRodStats()
-    safeCall(function()
+    pcall(function()
         if not Settings.ModifyRodStats then 
             print("🔒 Rod Stats Modifier is OFF")
             return 
@@ -600,12 +602,24 @@ local function modifyRodStats()
         if not equippedTool then
             print("🔍 No !!!EQUIPPED_TOOL!!! found, checking common rod names...")
             -- Also check for common fishing rod names
-            local commonRodNames = {"FishingRod", "Rod", "Fishing", "Tool"}
+            local commonRodNames = {"FishingRod", "Rod", "Fishing", "Tool", "BasicRod", "WoodenRod", "SteelRod", "GoldenRod", "DiamondRod"}
             for _, name in pairs(commonRodNames) do
                 equippedTool = character:FindFirstChild(name)
                 if equippedTool then 
                     print("✅ Found rod: " .. name)
                     break 
+                end
+            end
+            
+            -- If still not found, try to find ANY tool
+            if not equippedTool then
+                print("🔍 Searching for any equipped tool...")
+                for _, child in pairs(character:GetChildren()) do
+                    if child:IsA("Tool") then
+                        equippedTool = child
+                        print("✅ Found generic tool: " .. child.Name)
+                        break
+                    end
                 end
             end
         else
@@ -839,11 +853,21 @@ end
 -- Function to continuously apply rod stats modifications
 local function startRodStatsModifier()
     task.spawn(function()
+        print("🚀 Rod Stats Modifier started!")
         while Settings.ModifyRodStats do
-            modifyRodStats()
+            pcall(modifyRodStats) -- Use pcall to prevent crashes
             task.wait(0.5) -- Update every 0.5 seconds for faster response
         end
+        print("⏹️ Rod Stats Modifier stopped!")
     end)
+end
+
+-- Force restart modifier function
+local function forceRestartModifier()
+    if Settings.ModifyRodStats then
+        print("🔄 Force restarting Rod Stats Modifier...")
+        startRodStatsModifier()
+    end
 end
 
 -- ===================================================================
@@ -2786,6 +2810,14 @@ local function createCompleteGUI()
     print("📊 Analytics: Fish Rarity Tracking, Money Counter, Performance Stats")
     print("🎣 NEW: Rod Stats Modifier - Control Rod Luck, Speed & Weight!")
     print("⚙️ Configure custom rod stats in Advanced tab")
+    print("🧪 DEBUG COMMANDS:")
+    print("  - Type: forceRestartModifier() to restart modifier")
+    print("  - Type: modifyRodStats() to test modification once")
+    
+    -- Make functions global for debug access
+    _G.forceRestartModifier = forceRestartModifier
+    _G.modifyRodStats = modifyRodStats
+    _G.startRodStatsModifier = startRodStatsModifier
 
     return ZayrosFISHIT
 end
