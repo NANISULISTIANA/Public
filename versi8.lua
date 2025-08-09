@@ -102,7 +102,7 @@ local Settings = {
     AutoBaitUse = false,
     SmartFishing = false,
     -- New Rod Stats Modification
-    ModifyRodStats = false,
+    ModifyRodStats = true,
     CustomRodLuck = 1000,
     CustomRodSpeed = 120,
     CustomRodWeight = 600
@@ -580,24 +580,45 @@ end
 -- ===================================================================
 local function modifyRodStats()
     safeCall(function()
-        if not Settings.ModifyRodStats then return end
+        if not Settings.ModifyRodStats then 
+            print("🔒 Rod Stats Modifier is OFF")
+            return 
+        end
+        
+        print("🎣 Starting Rod Stats Modification...")
+        print("🎯 Target Values - Luck:" .. Settings.CustomRodLuck .. ", Speed:" .. Settings.CustomRodSpeed .. ", Weight:" .. Settings.CustomRodWeight)
         
         -- Find equipped fishing rod in character
         local character = player.Character
-        if not character then return end
+        if not character then 
+            print("❌ No character found")
+            return 
+        end
         
         -- Look for equipped fishing tool
         local equippedTool = character:FindFirstChild("!!!EQUIPPED_TOOL!!!")
         if not equippedTool then
+            print("🔍 No !!!EQUIPPED_TOOL!!! found, checking common rod names...")
             -- Also check for common fishing rod names
             local commonRodNames = {"FishingRod", "Rod", "Fishing", "Tool"}
             for _, name in pairs(commonRodNames) do
                 equippedTool = character:FindFirstChild(name)
-                if equippedTool then break end
+                if equippedTool then 
+                    print("✅ Found rod: " .. name)
+                    break 
+                end
             end
+        else
+            print("✅ Found equipped tool: !!!EQUIPPED_TOOL!!!")
+        end
+        
+        if not equippedTool then
+            print("❌ No fishing rod found in character")
+            return
         end
         
         if equippedTool and equippedTool:IsA("Tool") then
+            print("🛠️ Modifying tool: " .. equippedTool.Name)
             -- Method 1: Modify tool attributes/values directly
             local rodStats = {
                 {names = {"Luck", "FishingLuck", "LuckStat"}, value = Settings.CustomRodLuck},
@@ -605,17 +626,23 @@ local function modifyRodStats()
                 {names = {"Weight", "FishingWeight", "WeightStat"}, value = Settings.CustomRodWeight}
             }
             
+            local modificationsApplied = 0
+            
             for _, statInfo in pairs(rodStats) do
                 for _, statName in pairs(statInfo.names) do
                     -- Try to modify as attributes
                     if equippedTool:GetAttribute(statName) then
                         equippedTool:SetAttribute(statName, statInfo.value)
+                        print("✅ Modified attribute: " .. statName .. " = " .. statInfo.value)
+                        modificationsApplied = modificationsApplied + 1
                     end
                     
                     -- Try to modify as child values
                     local statValue = equippedTool:FindFirstChild(statName)
                     if statValue and (statValue:IsA("NumberValue") or statValue:IsA("IntValue")) then
                         statValue.Value = statInfo.value
+                        print("✅ Modified child value: " .. statName .. " = " .. statInfo.value)
+                        modificationsApplied = modificationsApplied + 1
                     end
                     
                     -- Check in subfolders
@@ -624,10 +651,14 @@ local function modifyRodStats()
                         local statInFolder = statsFolder:FindFirstChild(statName)
                         if statInFolder and (statInFolder:IsA("NumberValue") or statInFolder:IsA("IntValue")) then
                             statInFolder.Value = statInfo.value
+                            print("✅ Modified folder value: Stats/" .. statName .. " = " .. statInfo.value)
+                            modificationsApplied = modificationsApplied + 1
                         end
                     end
                 end
             end
+            
+            print("📊 Total modifications applied: " .. modificationsApplied)
             
             -- Method 2: Try to modify via RemoteEvents/Functions for rod stats
             local rodRemotes = {
