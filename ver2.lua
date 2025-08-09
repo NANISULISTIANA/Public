@@ -326,7 +326,9 @@ local function createFloatingIcon()
     local iconStartPos = nil
 
     -- Mouse Button Down - Start dragging
+    local dragStartTime = 0
     connections[#connections + 1] = FloatingIcon.MouseButton1Down:Connect(function()
+        dragStartTime = tick()
         iconDragging = true
         local mouse = player:GetMouse()
         iconDragStart = Vector2.new(mouse.X, mouse.Y)
@@ -338,19 +340,55 @@ local function createFloatingIcon()
         if iconDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local mouse = player:GetMouse()
             local delta = Vector2.new(mouse.X, mouse.Y) - iconDragStart
-            FloatingIcon.Position = UDim2.new(
-                iconStartPos.X.Scale,
-                iconStartPos.X.Offset + delta.X,
-                iconStartPos.Y.Scale,
-                iconStartPos.Y.Offset + delta.Y
-            )
+            -- Only move if actually dragging (moved more than 5 pixels)
+            if math.abs(delta.X) > 5 or math.abs(delta.Y) > 5 then
+                FloatingIcon.Position = UDim2.new(
+                    iconStartPos.X.Scale,
+                    iconStartPos.X.Offset + delta.X,
+                    iconStartPos.Y.Scale,
+                    iconStartPos.Y.Offset + delta.Y
+                )
+            end
         end
     end)
 
-    -- Mouse Button Up - Stop dragging
+    -- Mouse Button Up - Stop dragging and handle click
     connections[#connections + 1] = UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 and iconDragging then
+            local dragTime = tick() - dragStartTime
+            local mouse = player:GetMouse()
+            local deltaMove = Vector2.new(mouse.X, mouse.Y) - iconDragStart
+            local totalMove = math.sqrt(deltaMove.X^2 + deltaMove.Y^2)
+            
             iconDragging = false
+            
+            -- If it was a quick click (< 0.2 seconds) and minimal movement (< 5 pixels), treat as click
+            if dragTime < 0.2 and totalMove < 5 then
+                -- This is a click, not a drag - trigger toggle
+                task.spawn(function()
+                    isHidden = not isHidden
+                    GameXsanGUI.Enabled = not isHidden
+                    GameXsanGUI.Visible = not isHidden
+                    
+                    -- Visual feedback
+                    local iconStroke = FloatingIcon:FindFirstChild("UIStroke")
+                    local iconImage = FloatingIcon:FindFirstChild("IconImage")
+                    local iconText = FloatingIcon:FindFirstChild("IconText")
+                    
+                    if isHidden then
+                        if iconStroke then iconStroke.Color = Color3.fromRGB(255, 0, 0) end
+                        if iconImage then iconImage.ImageColor3 = Color3.fromRGB(255, 100, 100) end
+                        if iconText then iconText.TextColor3 = Color3.fromRGB(255, 100, 100) end
+                        print("📱 GUI Hidden - Click icon to show")
+                    else
+                        if iconStroke then iconStroke.Color = Color3.fromRGB(0, 255, 0) end
+                        if iconImage then iconImage.ImageColor3 = Color3.fromRGB(0, 255, 0) end
+                        if iconText then iconText.TextColor3 = Color3.fromRGB(0, 255, 0) end
+                        print("📱 GUI Shown")
+                        createNotification("📱 GUI Shown", Color3.fromRGB(0, 200, 0))
+                    end
+                end)
+            end
         end
     end)
 
@@ -1094,34 +1132,6 @@ local function createCompleteGUI()
     --                      BUTTON CONNECTIONS
     -- ===============================================================
     
-    -- Floating icon toggle functionality
-    connections[#connections + 1] = FloatingIcon.MouseButton1Click:Connect(function()
-        isHidden = not isHidden
-        GameXsanGUI.Enabled = not isHidden
-        
-        -- Visual feedback on icon
-        local iconStroke = FloatingIcon:FindFirstChild("UIStroke")
-        local iconImage = FloatingIcon:FindFirstChild("IconImage")
-        
-        if isHidden then
-            if iconStroke then 
-                iconStroke.Color = Color3.fromRGB(255, 0, 0) 
-            end
-            if iconImage then 
-                iconImage.ImageColor3 = Color3.fromRGB(255, 100, 100) 
-            end
-            createNotification("📱 GUI Hidden - Click icon to show", Color3.fromRGB(255, 165, 0))
-        else
-            if iconStroke then 
-                iconStroke.Color = Color3.fromRGB(0, 255, 0) 
-            end
-            if iconImage then 
-                iconImage.ImageColor3 = Color3.fromRGB(0, 255, 0) 
-            end
-            createNotification("📱 GUI Shown", Color3.fromRGB(0, 200, 0))
-        end
-    end)
-    
     -- Exit button (also hide floating icon when closing completely)
     connections[#connections + 1] = ExitBtn.MouseButton1Click:Connect(function()
         GameXsanGUI:Destroy()
@@ -1363,12 +1373,14 @@ local function createCompleteGUI()
         if input.KeyCode == CONFIG.HOTKEY then
             isHidden = not isHidden
             GameXsanGUI.Enabled = not isHidden
+            GameXsanGUI.Visible = not isHidden  -- Also set visibility
             
             -- Update floating icon appearance
             local iconFrame = FloatingGUI and FloatingGUI:FindFirstChild("FloatingIcon")
             if iconFrame then
                 local iconStroke = iconFrame:FindFirstChild("UIStroke")
                 local iconImage = iconFrame:FindFirstChild("IconImage")
+                local iconText = iconFrame:FindFirstChild("IconText")
                 
                 if isHidden then
                     if iconStroke then 
@@ -1377,12 +1389,18 @@ local function createCompleteGUI()
                     if iconImage then 
                         iconImage.ImageColor3 = Color3.fromRGB(255, 100, 100) 
                     end
+                    if iconText then 
+                        iconText.TextColor3 = Color3.fromRGB(255, 100, 100) 
+                    end
                 else
                     if iconStroke then 
                         iconStroke.Color = Color3.fromRGB(0, 255, 0) 
                     end
                     if iconImage then 
                         iconImage.ImageColor3 = Color3.fromRGB(0, 255, 0) 
+                    end
+                    if iconText then 
+                        iconText.TextColor3 = Color3.fromRGB(0, 255, 0) 
                     end
                 end
             end
@@ -1444,6 +1462,11 @@ local function createCompleteGUI()
     -- Initial setup
     showPanel("Main")
     updatePlayerList()
+    
+    -- Make sure GUI starts visible
+    GameXsanGUI.Enabled = true
+    GameXsanGUI.Visible = true
+    isHidden = false
 
     print("✅ GameXsan V2.0 loaded successfully!")
     print("📌 Press F9 to hide/show GUI")
