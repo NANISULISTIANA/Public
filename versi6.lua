@@ -104,8 +104,8 @@ local Settings = {
     -- New Rod Stats Modification
     ModifyRodStats = false,
     CustomRodLuck = 1000,
-    CustomRodSpeed = 100,
-    CustomRodWeight = 5000
+    CustomRodSpeed = 120,
+    CustomRodWeight = 600
 }
 
 -- ===================================================================
