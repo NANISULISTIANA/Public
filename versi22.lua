@@ -755,7 +755,7 @@ function ZayrosFishingGUI:createRodModPage()
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.BorderSizePixel = 0
     scrollFrame.ScrollBarThickness = 6
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 550)
     
     -- Current Rod Display
     local currentRodFrame = createFrame(scrollFrame, "CurrentRodFrame", 
@@ -961,6 +961,18 @@ function ZayrosFishingGUI:createRodModPage()
         end
     end)
     self.autoModToggle.Position = UDim2.new(0.8, 0, 0.2, 0)
+    
+    -- Debug Button
+    local debugBtn = createButton(scrollFrame, "DebugBtn", "Debug Rod Info", 
+        UDim2.new(1, -20, 0, 40),
+        UDim2.new(0, 10, 0, 490)
+    )
+    debugBtn.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
+    
+    self:addButtonHoverEffect(debugBtn)
+    debugBtn.MouseButton1Click:Connect(function()
+        self:debugRodInfo()
+    end)
     
     -- Store reference for rod detection
     self.autoModifyRods = false
@@ -1513,11 +1525,29 @@ function ZayrosFishingGUI:getCurrentRod()
     local success, rod = pcall(function()
         local character = self.player.Character
         if character then
+            -- Try different ways to find equipped rod
+            local tool = character:FindFirstChildOfClass("Tool")
+            if tool then
+                return tool
+            end
+            
+            -- Alternative way to find equipped tool
             local equippedTool = character:FindFirstChild("!!!EQUIPPED_TOOL!!!")
             if equippedTool then
                 return equippedTool
             end
         end
+        
+        -- Try finding in backpack if nothing equipped
+        local backpack = self.player.Backpack
+        if backpack then
+            for _, tool in ipairs(backpack:GetChildren()) do
+                if tool:IsA("Tool") and tool.Name:lower():find("rod") then
+                    return tool
+                end
+            end
+        end
+        
         return nil
     end)
     
@@ -1525,30 +1555,72 @@ function ZayrosFishingGUI:getCurrentRod()
 end
 
 function ZayrosFishingGUI:getRodStats(rod)
-    if not rod then return nil end
+    if not rod then return {} end
     
     local success, stats = pcall(function()
         local stats = {}
         
         -- Try to find stats in different possible locations
         local possiblePaths = {
+            rod,
             rod:FindFirstChild("Stats"),
             rod:FindFirstChild("Configuration"),
+            rod:FindFirstChild("Handle"),
             rod:FindFirstChild("Handle") and rod.Handle:FindFirstChild("Stats"),
-            rod:FindFirstChild("Handle") and rod.Handle:FindFirstChild("Configuration")
+            rod:FindFirstChild("Handle") and rod.Handle:FindFirstChild("Configuration"),
+            rod:FindFirstChild("ServerStorage"),
+            rod:FindFirstChild("Values")
         }
         
-        for _, statContainer in ipairs(possiblePaths) do
-            if statContainer then
-                local luck = statContainer:FindFirstChild("Luck") or statContainer:FindFirstChild("LuckValue")
-                local speed = statContainer:FindFirstChild("Speed") or statContainer:FindFirstChild("SpeedValue")
-                local weight = statContainer:FindFirstChild("Weight") or statContainer:FindFirstChild("WeightValue")
+        for _, container in ipairs(possiblePaths) do
+            if container then
+                -- Look for different possible stat names
+                local luckStats = {
+                    container:FindFirstChild("Luck"),
+                    container:FindFirstChild("LuckValue"),
+                    container:FindFirstChild("luck"),
+                    container:FindFirstChild("Luck_Value")
+                }
                 
-                if luck then stats.Luck = luck end
-                if speed then stats.Speed = speed end
-                if weight then stats.Weight = weight end
+                local speedStats = {
+                    container:FindFirstChild("Speed"),
+                    container:FindFirstChild("SpeedValue"),
+                    container:FindFirstChild("speed"),
+                    container:FindFirstChild("Speed_Value")
+                }
                 
-                if next(stats) then break end
+                local weightStats = {
+                    container:FindFirstChild("Weight"),
+                    container:FindFirstChild("WeightValue"),
+                    container:FindFirstChild("weight"),
+                    container:FindFirstChild("Weight_Value")
+                }
+                
+                for _, stat in ipairs(luckStats) do
+                    if stat and (stat:IsA("NumberValue") or stat:IsA("IntValue") or stat:IsA("StringValue")) then
+                        stats.Luck = stat
+                        break
+                    end
+                end
+                
+                for _, stat in ipairs(speedStats) do
+                    if stat and (stat:IsA("NumberValue") or stat:IsA("IntValue") or stat:IsA("StringValue")) then
+                        stats.Speed = stat
+                        break
+                    end
+                end
+                
+                for _, stat in ipairs(weightStats) do
+                    if stat and (stat:IsA("NumberValue") or stat:IsA("IntValue") or stat:IsA("StringValue")) then
+                        stats.Weight = stat
+                        break
+                    end
+                end
+                
+                -- If we found any stats, return them
+                if next(stats) then
+                    break
+                end
             end
         end
         
@@ -1562,23 +1634,28 @@ function ZayrosFishingGUI:modifyRodStat(statName, value)
     local success, error = pcall(function()
         local rod = self:getCurrentRod()
         if not rod then
-            error("No rod equipped")
+            error("No rod equipped or found")
         end
         
         local stats = self:getRodStats(rod)
         if not stats or not next(stats) then
-            error("No stats found in current rod")
+            error("No stats found in current rod. Rod type might not be supported.")
         end
         
         local stat = stats[statName]
         
         if stat then
+            -- Try to modify the stat
             if stat:IsA("NumberValue") or stat:IsA("IntValue") then
                 stat.Value = value
             elseif stat:IsA("StringValue") then
                 stat.Value = tostring(value)
+            else
+                error("Unsupported stat type: " .. stat.ClassName)
             end
             
+            -- Force update display
+            task.wait(0.1)
             self:updateRodDisplay()
             self:createNotification(statName .. " set to " .. value, "success")
         else
@@ -1587,7 +1664,7 @@ function ZayrosFishingGUI:modifyRodStat(statName, value)
     end)
     
     if not success then
-        self:createNotification("Failed to modify " .. statName .. ": " .. tostring(error), "error")
+        self:createNotification("Failed to modify " .. statName .. ": " .. tostring(error), "error", 4)
     end
 end
 
@@ -1599,16 +1676,23 @@ function ZayrosFishingGUI:modifyAllRodStats()
     local success, error = pcall(function()
         local rod = self:getCurrentRod()
         if not rod then
-            error("No rod equipped")
+            error("No rod equipped or found")
         end
         
         local stats = self:getRodStats(rod)
+        if not stats or not next(stats) then
+            error("No stats found in current rod. Rod type might not be supported.")
+        end
+        
         local modified = {}
         
         -- Modify Luck
         if stats.Luck then
             if stats.Luck:IsA("NumberValue") or stats.Luck:IsA("IntValue") then
                 stats.Luck.Value = luck
+                table.insert(modified, "Luck: " .. luck)
+            elseif stats.Luck:IsA("StringValue") then
+                stats.Luck.Value = tostring(luck)
                 table.insert(modified, "Luck: " .. luck)
             end
         end
@@ -1618,6 +1702,9 @@ function ZayrosFishingGUI:modifyAllRodStats()
             if stats.Speed:IsA("NumberValue") or stats.Speed:IsA("IntValue") then
                 stats.Speed.Value = speed
                 table.insert(modified, "Speed: " .. speed)
+            elseif stats.Speed:IsA("StringValue") then
+                stats.Speed.Value = tostring(speed)
+                table.insert(modified, "Speed: " .. speed)
             end
         end
         
@@ -1626,19 +1713,24 @@ function ZayrosFishingGUI:modifyAllRodStats()
             if stats.Weight:IsA("NumberValue") or stats.Weight:IsA("IntValue") then
                 stats.Weight.Value = weight
                 table.insert(modified, "Weight: " .. weight)
+            elseif stats.Weight:IsA("StringValue") then
+                stats.Weight.Value = tostring(weight)
+                table.insert(modified, "Weight: " .. weight)
             end
         end
         
         if #modified > 0 then
+            -- Force update display
+            task.wait(0.1)
             self:updateRodDisplay()
-            self:createNotification("Modified: " .. table.concat(modified, ", "), "success", 3)
+            self:createNotification("Modified: " .. table.concat(modified, ", "), "success", 4)
         else
-            error("No stats found to modify")
+            error("No stats found to modify in this rod")
         end
     end)
     
     if not success then
-        self:createNotification("Failed to modify rod stats: " .. tostring(error), "error")
+        self:createNotification("Failed to modify rod stats: " .. tostring(error), "error", 4)
     end
 end
 
@@ -1648,7 +1740,7 @@ function ZayrosFishingGUI:updateRodDisplay()
     local success, info = pcall(function()
         local rod = self:getCurrentRod()
         if not rod then
-            return "No rod equipped"
+            return "No rod equipped or found"
         end
         
         local stats = self:getRodStats(rod)
@@ -1666,8 +1758,24 @@ function ZayrosFishingGUI:updateRodDisplay()
             infoText = infoText .. "Weight: " .. tostring(stats.Weight.Value)
         end
         
+        -- Remove trailing " | "
         if infoText:sub(-3) == " | " then
             infoText = infoText:sub(1, -4)
+        end
+        
+        -- If no stats found, add debug info
+        if not next(stats) then
+            infoText = infoText .. "\nNo stats found. Rod might not be supported."
+            
+            -- Add debug info about rod structure
+            local debugInfo = "\nRod children: "
+            for _, child in ipairs(rod:GetChildren()) do
+                debugInfo = debugInfo .. child.Name .. " (" .. child.ClassName .. "), "
+            end
+            if debugInfo:sub(-2) == ", " then
+                debugInfo = debugInfo:sub(1, -3)
+            end
+            infoText = infoText .. debugInfo
         end
         
         return infoText
@@ -1676,7 +1784,7 @@ function ZayrosFishingGUI:updateRodDisplay()
     if success then
         self.currentRodInfo.Text = info
     else
-        self.currentRodInfo.Text = "Error reading rod information"
+        self.currentRodInfo.Text = "Error reading rod information: " .. tostring(info)
     end
 end
 
@@ -1697,12 +1805,17 @@ function ZayrosFishingGUI:startRodMonitoring()
                     lastRod = currentRod
                     
                     -- Wait a bit for the rod to fully load
-                    task.wait(0.5)
+                    task.wait(1)
                     
-                    -- Auto modify with current values
-                    self:modifyAllRodStats()
-                    
-                    self:createNotification("Auto-modified new rod: " .. (currentRod.Name or "Unknown"), "info", 2)
+                    -- Check if we can find stats before trying to modify
+                    local stats = self:getRodStats(currentRod)
+                    if next(stats) then
+                        -- Auto modify with current values
+                        self:modifyAllRodStats()
+                        self:createNotification("Auto-modified: " .. (currentRod.Name or "Unknown"), "info", 3)
+                    else
+                        self:createNotification("Rod " .. (currentRod.Name or "Unknown") .. " not supported for auto-modification", "warning", 3)
+                    end
                 end
                 
                 -- Update display every few seconds
@@ -1713,7 +1826,7 @@ function ZayrosFishingGUI:startRodMonitoring()
                 warn("Rod monitoring error:", error)
             end
             
-            task.wait(2) -- Check every 2 seconds
+            task.wait(3) -- Check every 3 seconds to reduce lag
         end
     end)
 end
@@ -1722,6 +1835,94 @@ function ZayrosFishingGUI:stopRodMonitoring()
     if self.rodMonitorThread then
         task.cancel(self.rodMonitorThread)
         self.rodMonitorThread = nil
+    end
+end
+
+function ZayrosFishingGUI:debugRodInfo()
+    local success, info = pcall(function()
+        print("=== ROD DEBUG INFO ===")
+        
+        -- Character info
+        local character = self.player.Character
+        print("Character:", character and character.Name or "Not found")
+        
+        if character then
+            -- List all tools in character
+            print("Tools in Character:")
+            for _, child in ipairs(character:GetChildren()) do
+                if child:IsA("Tool") then
+                    print("  Tool:", child.Name, "Class:", child.ClassName)
+                end
+            end
+            
+            -- Check for equipped tool
+            local equippedTool = character:FindFirstChild("!!!EQUIPPED_TOOL!!!")
+            print("Equipped Tool:", equippedTool and equippedTool.Name or "Not found")
+        end
+        
+        -- Backpack info
+        local backpack = self.player.Backpack
+        print("Backpack:", backpack and "Found" or "Not found")
+        
+        if backpack then
+            print("Tools in Backpack:")
+            for _, child in ipairs(backpack:GetChildren()) do
+                if child:IsA("Tool") then
+                    print("  Tool:", child.Name, "Class:", child.ClassName)
+                end
+            end
+        end
+        
+        -- Current rod detection
+        local rod = self:getCurrentRod()
+        print("Current Rod:", rod and rod.Name or "Not found")
+        
+        if rod then
+            print("Rod Class:", rod.ClassName)
+            print("Rod Children:")
+            for _, child in ipairs(rod:GetChildren()) do
+                print("  Child:", child.Name, "Class:", child.ClassName)
+                
+                -- If it's a container, check its children too
+                if child:IsA("Folder") or child:IsA("Configuration") or child.Name == "Stats" then
+                    for _, subchild in ipairs(child:GetChildren()) do
+                        print("    SubChild:", subchild.Name, "Class:", subchild.ClassName, "Value:", subchild:IsA("ValueBase") and subchild.Value or "N/A")
+                    end
+                end
+            end
+            
+            -- Check Handle if exists
+            local handle = rod:FindFirstChild("Handle")
+            if handle then
+                print("Handle Children:")
+                for _, child in ipairs(handle:GetChildren()) do
+                    print("  Handle Child:", child.Name, "Class:", child.ClassName)
+                    
+                    if child:IsA("Folder") or child:IsA("Configuration") or child.Name == "Stats" then
+                        for _, subchild in ipairs(child:GetChildren()) do
+                            print("    Handle SubChild:", subchild.Name, "Class:", subchild.ClassName, "Value:", subchild:IsA("ValueBase") and subchild.Value or "N/A")
+                        end
+                    end
+                end
+            end
+            
+            -- Stats detection
+            local stats = self:getRodStats(rod)
+            print("Detected Stats:")
+            for statName, statObj in pairs(stats) do
+                print("  " .. statName .. ":", statObj.Value, "Class:", statObj.ClassName)
+            end
+        end
+        
+        print("=== END DEBUG INFO ===")
+        
+        return "Debug info printed to console (F9)"
+    end)
+    
+    if success then
+        self:createNotification(info, "info", 3)
+    else
+        self:createNotification("Debug failed: " .. tostring(info), "error", 3)
     end
 end
 
