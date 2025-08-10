@@ -193,7 +193,7 @@ function ZayrosFishingGUI:createSidebar()
     sidebar.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
     
     -- Create navigation buttons
-    local buttons = {"Main", "Player", "Teleport", "Boats", "Settings"}
+    local buttons = {"Main", "Player", "Teleport", "Boats", "Rod Mod", "Settings"}
     local buttonHeight = 30
     local spacing = 3
     
@@ -234,6 +234,7 @@ function ZayrosFishingGUI:createContentArea()
     self:createPlayerPage()
     self:createTeleportPage()
     self:createBoatsPage()
+    self:createRodModPage()
     self:createSettingsPage()
     
     -- Show main page by default
@@ -739,6 +740,236 @@ function ZayrosFishingGUI:createBoatsPage()
     self.pages.Boats = boatsPage
 end
 
+function ZayrosFishingGUI:createRodModPage()
+    local rodModPage = createFrame(self.contentFrame, "RodModPage", 
+        UDim2.new(1, 0, 1, 0), 
+        UDim2.new(0, 0, 0, 0)
+    )
+    rodModPage.BackgroundTransparency = 1
+    rodModPage.Visible = false
+    
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Parent = rodModPage
+    scrollFrame.Size = UDim2.new(1, -20, 1, -20)
+    scrollFrame.Position = UDim2.new(0, 10, 0, 10)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 6
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
+    
+    -- Current Rod Display
+    local currentRodFrame = createFrame(scrollFrame, "CurrentRodFrame", 
+        UDim2.new(1, -20, 0, 80), 
+        UDim2.new(0, 10, 0, 10)
+    )
+    
+    local currentRodLabel = Instance.new("TextLabel")
+    currentRodLabel.Parent = currentRodFrame
+    currentRodLabel.Size = UDim2.new(1, 0, 0, 25)
+    currentRodLabel.Position = UDim2.new(0, 0, 0, 0)
+    currentRodLabel.BackgroundTransparency = 1
+    currentRodLabel.Text = "Current Rod Modifier"
+    currentRodLabel.TextColor3 = COLORS.Text
+    currentRodLabel.TextScaled = true
+    currentRodLabel.Font = Enum.Font.SourceSansBold
+    
+    self.currentRodInfo = Instance.new("TextLabel")
+    self.currentRodInfo.Parent = currentRodFrame
+    self.currentRodInfo.Size = UDim2.new(1, -20, 0, 50)
+    self.currentRodInfo.Position = UDim2.new(0, 10, 0, 25)
+    self.currentRodInfo.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    self.currentRodInfo.BorderSizePixel = 0
+    self.currentRodInfo.Text = "No rod equipped or detected"
+    self.currentRodInfo.TextColor3 = COLORS.Text
+    self.currentRodInfo.TextScaled = true
+    self.currentRodInfo.Font = Enum.Font.SourceSans
+    self.currentRodInfo.TextWrapped = true
+    
+    local rodInfoCorner = Instance.new("UICorner")
+    rodInfoCorner.Parent = self.currentRodInfo
+    rodInfoCorner.CornerRadius = UDim.new(0, 4)
+    
+    -- Luck Modifier
+    local luckFrame = createFrame(scrollFrame, "LuckFrame", 
+        UDim2.new(1, -20, 0, 80), 
+        UDim2.new(0, 10, 0, 100)
+    )
+    
+    local luckLabel = Instance.new("TextLabel")
+    luckLabel.Parent = luckFrame
+    luckLabel.Size = UDim2.new(0.4, 0, 0.4, 0)
+    luckLabel.Position = UDim2.new(0, 10, 0, 5)
+    luckLabel.BackgroundTransparency = 1
+    luckLabel.Text = "Luck Value:"
+    luckLabel.TextColor3 = COLORS.Text
+    luckLabel.TextScaled = true
+    luckLabel.Font = Enum.Font.SourceSansBold
+    luckLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    self.luckBox = Instance.new("TextBox")
+    self.luckBox.Parent = luckFrame
+    self.luckBox.Size = UDim2.new(0.25, 0, 0.35, 0)
+    self.luckBox.Position = UDim2.new(0.45, 0, 0.05, 0)
+    self.luckBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    self.luckBox.BorderSizePixel = 0
+    self.luckBox.Text = "999"
+    self.luckBox.TextColor3 = COLORS.Text
+    self.luckBox.TextScaled = true
+    self.luckBox.Font = Enum.Font.SourceSans
+    self.luckBox.PlaceholderText = "999"
+    
+    local luckCorner = Instance.new("UICorner")
+    luckCorner.Parent = self.luckBox
+    luckCorner.CornerRadius = UDim.new(0, 4)
+    
+    local setLuckBtn = createButton(luckFrame, "SetLuckBtn", "Set", 
+        UDim2.new(0.15, 0, 0.35, 0),
+        UDim2.new(0.75, 0, 0.05, 0)
+    )
+    setLuckBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    
+    self:addButtonHoverEffect(setLuckBtn)
+    setLuckBtn.MouseButton1Click:Connect(function()
+        self:modifyRodStat("Luck", tonumber(self.luckBox.Text) or 999)
+    end)
+    
+    -- Speed Modifier
+    local speedFrame = createFrame(scrollFrame, "SpeedFrame", 
+        UDim2.new(1, -20, 0, 80), 
+        UDim2.new(0, 10, 0, 190)
+    )
+    
+    local speedLabel = Instance.new("TextLabel")
+    speedLabel.Parent = speedFrame
+    speedLabel.Size = UDim2.new(0.4, 0, 0.4, 0)
+    speedLabel.Position = UDim2.new(0, 10, 0, 5)
+    speedLabel.BackgroundTransparency = 1
+    speedLabel.Text = "Speed Value:"
+    speedLabel.TextColor3 = COLORS.Text
+    speedLabel.TextScaled = true
+    speedLabel.Font = Enum.Font.SourceSansBold
+    speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    self.speedBox = Instance.new("TextBox")
+    self.speedBox.Parent = speedFrame
+    self.speedBox.Size = UDim2.new(0.25, 0, 0.35, 0)
+    self.speedBox.Position = UDim2.new(0.45, 0, 0.05, 0)
+    self.speedBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    self.speedBox.BorderSizePixel = 0
+    self.speedBox.Text = "999"
+    self.speedBox.TextColor3 = COLORS.Text
+    self.speedBox.TextScaled = true
+    self.speedBox.Font = Enum.Font.SourceSans
+    self.speedBox.PlaceholderText = "999"
+    
+    local speedCorner = Instance.new("UICorner")
+    speedCorner.Parent = self.speedBox
+    speedCorner.CornerRadius = UDim.new(0, 4)
+    
+    local setSpeedBtn = createButton(speedFrame, "SetSpeedBtn", "Set", 
+        UDim2.new(0.15, 0, 0.35, 0),
+        UDim2.new(0.75, 0, 0.05, 0)
+    )
+    setSpeedBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    
+    self:addButtonHoverEffect(setSpeedBtn)
+    setSpeedBtn.MouseButton1Click:Connect(function()
+        self:modifyRodStat("Speed", tonumber(self.speedBox.Text) or 999)
+    end)
+    
+    -- Weight Modifier
+    local weightFrame = createFrame(scrollFrame, "WeightFrame", 
+        UDim2.new(1, -20, 0, 80), 
+        UDim2.new(0, 10, 0, 280)
+    )
+    
+    local weightLabel = Instance.new("TextLabel")
+    weightLabel.Parent = weightFrame
+    weightLabel.Size = UDim2.new(0.4, 0, 0.4, 0)
+    weightLabel.Position = UDim2.new(0, 10, 0, 5)
+    weightLabel.BackgroundTransparency = 1
+    weightLabel.Text = "Weight Value:"
+    weightLabel.TextColor3 = COLORS.Text
+    weightLabel.TextScaled = true
+    weightLabel.Font = Enum.Font.SourceSansBold
+    weightLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    self.weightBox = Instance.new("TextBox")
+    self.weightBox.Parent = weightFrame
+    self.weightBox.Size = UDim2.new(0.25, 0, 0.35, 0)
+    self.weightBox.Position = UDim2.new(0.45, 0, 0.05, 0)
+    self.weightBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    self.weightBox.BorderSizePixel = 0
+    self.weightBox.Text = "999"
+    self.weightBox.TextColor3 = COLORS.Text
+    self.weightBox.TextScaled = true
+    self.weightBox.Font = Enum.Font.SourceSans
+    self.weightBox.PlaceholderText = "999"
+    
+    local weightCorner = Instance.new("UICorner")
+    weightCorner.Parent = self.weightBox
+    weightCorner.CornerRadius = UDim.new(0, 4)
+    
+    local setWeightBtn = createButton(weightFrame, "SetWeightBtn", "Set", 
+        UDim2.new(0.15, 0, 0.35, 0),
+        UDim2.new(0.75, 0, 0.05, 0)
+    )
+    setWeightBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    
+    self:addButtonHoverEffect(setWeightBtn)
+    setWeightBtn.MouseButton1Click:Connect(function()
+        self:modifyRodStat("Weight", tonumber(self.weightBox.Text) or 999)
+    end)
+    
+    -- Modify All Stats Button
+    local modifyAllBtn = createButton(scrollFrame, "ModifyAllBtn", "Set All Stats (Luck/Speed/Weight)", 
+        UDim2.new(1, -20, 0, 40),
+        UDim2.new(0, 10, 0, 370)
+    )
+    modifyAllBtn.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+    
+    self:addButtonHoverEffect(modifyAllBtn)
+    modifyAllBtn.MouseButton1Click:Connect(function()
+        self:modifyAllRodStats()
+    end)
+    
+    -- Auto Detect and Modify Toggle
+    local autoModFrame = createFrame(scrollFrame, "AutoModFrame", 
+        UDim2.new(1, -20, 0, 60), 
+        UDim2.new(0, 10, 0, 420)
+    )
+    
+    local autoModLabel = Instance.new("TextLabel")
+    autoModLabel.Parent = autoModFrame
+    autoModLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    autoModLabel.Position = UDim2.new(0, 10, 0, 0)
+    autoModLabel.BackgroundTransparency = 1
+    autoModLabel.Text = "Auto Modify Rod Stats (When Equipped)"
+    autoModLabel.TextColor3 = COLORS.Text
+    autoModLabel.TextScaled = true
+    autoModLabel.Font = Enum.Font.SourceSansBold
+    autoModLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    self.autoModToggle = self:createToggleSwitch(autoModFrame, false, function(state)
+        self.autoModifyRods = state
+        if state then
+            self:startRodMonitoring()
+            self:createNotification("Auto rod modification enabled", "success")
+        else
+            self:stopRodMonitoring()
+            self:createNotification("Auto rod modification disabled", "info")
+        end
+    end)
+    self.autoModToggle.Position = UDim2.new(0.8, 0, 0.2, 0)
+    
+    -- Store reference for rod detection
+    self.autoModifyRods = false
+    self.rodMonitorThread = nil
+    
+    self.pages = self.pages or {}
+    self.pages["Rod Mod"] = rodModPage
+end
+
 function ZayrosFishingGUI:createSettingsPage()
     local settingsPage = createFrame(self.contentFrame, "SettingsPage", 
         UDim2.new(1, 0, 1, 0), 
@@ -978,6 +1209,11 @@ function ZayrosFishingGUI:navigateToPage(pageName)
     -- Update title
     if self.titleLabel then
         self.titleLabel.Text = "Zayros FISHIT v2.0 - " .. pageName
+    end
+    
+    -- Special handling for Rod Mod page
+    if pageName == "Rod Mod" and self.currentRodInfo then
+        self:updateRodDisplay()
     end
     
     self:createNotification("Navigated to " .. pageName, "info", 1)
@@ -1272,9 +1508,229 @@ function ZayrosFishingGUI:performFishingCycle()
     task.wait(cycleDelay)
 end
 
+-- ===== ROD MODIFICATION METHODS =====
+function ZayrosFishingGUI:getCurrentRod()
+    local success, rod = pcall(function()
+        local character = self.player.Character
+        if character then
+            local equippedTool = character:FindFirstChild("!!!EQUIPPED_TOOL!!!")
+            if equippedTool then
+                return equippedTool
+            end
+        end
+        return nil
+    end)
+    
+    return success and rod or nil
+end
+
+function ZayrosFishingGUI:getRodStats(rod)
+    if not rod then return nil end
+    
+    local success, stats = pcall(function()
+        local stats = {}
+        
+        -- Try to find stats in different possible locations
+        local possiblePaths = {
+            rod:FindFirstChild("Stats"),
+            rod:FindFirstChild("Configuration"),
+            rod:FindFirstChild("Handle") and rod.Handle:FindFirstChild("Stats"),
+            rod:FindFirstChild("Handle") and rod.Handle:FindFirstChild("Configuration")
+        }
+        
+        for _, statContainer in ipairs(possiblePaths) do
+            if statContainer then
+                local luck = statContainer:FindFirstChild("Luck") or statContainer:FindFirstChild("LuckValue")
+                local speed = statContainer:FindFirstChild("Speed") or statContainer:FindFirstChild("SpeedValue")
+                local weight = statContainer:FindFirstChild("Weight") or statContainer:FindFirstChild("WeightValue")
+                
+                if luck then stats.Luck = luck end
+                if speed then stats.Speed = speed end
+                if weight then stats.Weight = weight end
+                
+                if next(stats) then break end
+            end
+        end
+        
+        return stats
+    end)
+    
+    return success and stats or {}
+end
+
+function ZayrosFishingGUI:modifyRodStat(statName, value)
+    local success, error = pcall(function()
+        local rod = self:getCurrentRod()
+        if not rod then
+            error("No rod equipped")
+        end
+        
+        local stats = self:getRodStats(rod)
+        if not stats or not next(stats) then
+            error("No stats found in current rod")
+        end
+        
+        local stat = stats[statName]
+        
+        if stat then
+            if stat:IsA("NumberValue") or stat:IsA("IntValue") then
+                stat.Value = value
+            elseif stat:IsA("StringValue") then
+                stat.Value = tostring(value)
+            end
+            
+            self:updateRodDisplay()
+            self:createNotification(statName .. " set to " .. value, "success")
+        else
+            error("Could not find " .. statName .. " stat in current rod")
+        end
+    end)
+    
+    if not success then
+        self:createNotification("Failed to modify " .. statName .. ": " .. tostring(error), "error")
+    end
+end
+
+function ZayrosFishingGUI:modifyAllRodStats()
+    local luck = tonumber(self.luckBox.Text) or 999
+    local speed = tonumber(self.speedBox.Text) or 999
+    local weight = tonumber(self.weightBox.Text) or 999
+    
+    local success, error = pcall(function()
+        local rod = self:getCurrentRod()
+        if not rod then
+            error("No rod equipped")
+        end
+        
+        local stats = self:getRodStats(rod)
+        local modified = {}
+        
+        -- Modify Luck
+        if stats.Luck then
+            if stats.Luck:IsA("NumberValue") or stats.Luck:IsA("IntValue") then
+                stats.Luck.Value = luck
+                table.insert(modified, "Luck: " .. luck)
+            end
+        end
+        
+        -- Modify Speed
+        if stats.Speed then
+            if stats.Speed:IsA("NumberValue") or stats.Speed:IsA("IntValue") then
+                stats.Speed.Value = speed
+                table.insert(modified, "Speed: " .. speed)
+            end
+        end
+        
+        -- Modify Weight
+        if stats.Weight then
+            if stats.Weight:IsA("NumberValue") or stats.Weight:IsA("IntValue") then
+                stats.Weight.Value = weight
+                table.insert(modified, "Weight: " .. weight)
+            end
+        end
+        
+        if #modified > 0 then
+            self:updateRodDisplay()
+            self:createNotification("Modified: " .. table.concat(modified, ", "), "success", 3)
+        else
+            error("No stats found to modify")
+        end
+    end)
+    
+    if not success then
+        self:createNotification("Failed to modify rod stats: " .. tostring(error), "error")
+    end
+end
+
+function ZayrosFishingGUI:updateRodDisplay()
+    if not self.currentRodInfo then return end
+    
+    local success, info = pcall(function()
+        local rod = self:getCurrentRod()
+        if not rod then
+            return "No rod equipped"
+        end
+        
+        local stats = self:getRodStats(rod)
+        local rodName = rod.Name or "Unknown Rod"
+        
+        local infoText = "Rod: " .. rodName .. "\n"
+        
+        if stats.Luck then
+            infoText = infoText .. "Luck: " .. tostring(stats.Luck.Value) .. " | "
+        end
+        if stats.Speed then
+            infoText = infoText .. "Speed: " .. tostring(stats.Speed.Value) .. " | "
+        end
+        if stats.Weight then
+            infoText = infoText .. "Weight: " .. tostring(stats.Weight.Value)
+        end
+        
+        if infoText:sub(-3) == " | " then
+            infoText = infoText:sub(1, -4)
+        end
+        
+        return infoText
+    end)
+    
+    if success then
+        self.currentRodInfo.Text = info
+    else
+        self.currentRodInfo.Text = "Error reading rod information"
+    end
+end
+
+function ZayrosFishingGUI:startRodMonitoring()
+    if self.rodMonitorThread then
+        task.cancel(self.rodMonitorThread)
+    end
+    
+    self.rodMonitorThread = task.spawn(function()
+        local lastRod = nil
+        
+        while self.autoModifyRods and self.gui and self.gui.Parent do
+            local success, error = pcall(function()
+                local currentRod = self:getCurrentRod()
+                
+                -- If a new rod is equipped, modify its stats
+                if currentRod and currentRod ~= lastRod then
+                    lastRod = currentRod
+                    
+                    -- Wait a bit for the rod to fully load
+                    task.wait(0.5)
+                    
+                    -- Auto modify with current values
+                    self:modifyAllRodStats()
+                    
+                    self:createNotification("Auto-modified new rod: " .. (currentRod.Name or "Unknown"), "info", 2)
+                end
+                
+                -- Update display every few seconds
+                self:updateRodDisplay()
+            end)
+            
+            if not success then
+                warn("Rod monitoring error:", error)
+            end
+            
+            task.wait(2) -- Check every 2 seconds
+        end
+    end)
+end
+
+function ZayrosFishingGUI:stopRodMonitoring()
+    if self.rodMonitorThread then
+        task.cancel(self.rodMonitorThread)
+        self.rodMonitorThread = nil
+    end
+end
+
 function ZayrosFishingGUI:destroy()
     -- Stop auto fishing
     self:stopAutoFishing()
+    
+    -- Stop rod monitoring
+    self:stopRodMonitoring()
     
     -- Stop animations
     if self.iconPulseAnimation then
