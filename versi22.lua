@@ -1235,7 +1235,13 @@ end
 function ZayrosFishingGUI:sellAllFish()
     local success, error = pcall(function()
         local Rs = SERVICES.ReplicatedStorage
-        local sellAll = Rs.Packages._Index["sleitnick_net@0.2.0"].net["RF/SellAllItems"]
+        local netFolder = Rs.Packages._Index["sleitnick_net@0.2.0"].net
+        local sellAll = netFolder:FindFirstChild("RF/SellAllItems")
+        
+        if not sellAll then
+            error("SellAllItems remote not found")
+        end
+        
         sellAll:InvokeServer()
     end)
     
@@ -1368,7 +1374,13 @@ end
 function ZayrosFishingGUI:spawnBoat(boatName)
     local success, error = pcall(function()
         local Rs = SERVICES.ReplicatedStorage
-        local spawnBoat = Rs.Packages._Index["sleitnick_net@0.2.0"].net["RF/SpawnBoat"]
+        local netFolder = Rs.Packages._Index["sleitnick_net@0.2.0"].net
+        local spawnBoat = netFolder:FindFirstChild("RF/SpawnBoat")
+        
+        if not spawnBoat then
+            error("SpawnBoat remote not found")
+        end
+        
         spawnBoat:InvokeServer(boatName)
     end)
     
@@ -1382,7 +1394,13 @@ end
 function ZayrosFishingGUI:despawnAllBoats()
     local success, error = pcall(function()
         local Rs = SERVICES.ReplicatedStorage
-        local despawnBoat = Rs.Packages._Index["sleitnick_net@0.2.0"].net["RF/DespawnBoat"]
+        local netFolder = Rs.Packages._Index["sleitnick_net@0.2.0"].net
+        local despawnBoat = netFolder:FindFirstChild("RF/DespawnBoat")
+        
+        if not despawnBoat then
+            error("DespawnBoat remote not found")
+        end
+        
         despawnBoat:InvokeServer()
     end)
     
@@ -1438,17 +1456,31 @@ function ZayrosFishingGUI:startAutoFishing()
     end
     
     self.autoFishThread = task.spawn(function()
+        local consecutiveErrors = 0
+        local maxErrors = 5
+        
         while self.isAutoFishing do
             local success, error = pcall(function()
-                self:performFishingCycle()
+                return self:performFishingCycle()
             end)
             
-            if not success then
-                warn("Auto fishing error:", error)
+            if not success or error == false then
+                consecutiveErrors = consecutiveErrors + 1
+                warn("Auto fishing error #" .. consecutiveErrors .. ":", error)
+                
+                if consecutiveErrors >= maxErrors then
+                    warn("Too many consecutive errors, stopping auto fishing")
+                    self.isAutoFishing = false
+                    self:createNotification("Auto fishing stopped due to errors", "error", 5)
+                    break
+                end
+                
                 -- Use randomized retry delay
-                local retryDelay = self.useRandomization and self:getRandomDelay(1, 3) or 1
+                local retryDelay = self.useRandomization and self:getRandomDelay(2, 5) or 3
                 task.wait(retryDelay)
             else
+                consecutiveErrors = 0 -- Reset on success
+                
                 -- Use custom delay from settings if available
                 local delay = tonumber(self.delayBox and self.delayBox.Text) or 0.1
                 if self.useRandomization then
@@ -1457,6 +1489,8 @@ function ZayrosFishingGUI:startAutoFishing()
                 task.wait(delay)
             end
         end
+        
+        print("Auto fishing thread ended")
     end)
 end
 
@@ -1466,21 +1500,48 @@ function ZayrosFishingGUI:stopAutoFishing()
         self.autoFishThread = nil
     end
     
-    -- Cancel any ongoing fishing
+    -- Cancel any ongoing fishing with safe remote calls
     pcall(function()
         local Rs = SERVICES.ReplicatedStorage
-        local CancelFishing = Rs.Packages._Index["sleitnick_net@0.2.0"].net["RF/CancelFishingInputs"]
-        CancelFishing:InvokeServer()
+        local success, netFolder = pcall(function()
+            return Rs.Packages._Index["sleitnick_net@0.2.0"].net
+        end)
+        
+        if success and netFolder then
+            local CancelFishing = netFolder:FindFirstChild("RF/CancelFishingInputs")
+            if CancelFishing then
+                CancelFishing:InvokeServer()
+            end
+        end
     end)
 end
 
 function ZayrosFishingGUI:performFishingCycle()
+    -- Safe remote detection with error handling
     local Rs = SERVICES.ReplicatedStorage
-    local EquipRod = Rs.Packages._Index["sleitnick_net@0.2.0"].net["RE/EquipToolFromHotbar"]
-    local ChargeRod = Rs.Packages._Index["sleitnick_net@0.2.0"].net["RF/ChargeFishingRod"]
-    local RequestFishing = Rs.Packages._Index["sleitnick_net@0.2.0"].net["RF/RequestFishingMinigameStarted"]
-    local FishingComplete = Rs.Packages._Index["sleitnick_net@0.2.0"].net["RE/FishingCompleted"]
-    local CancelFishing = Rs.Packages._Index["sleitnick_net@0.2.0"].net["RF/CancelFishingInputs"]
+    local remotes = {}
+    
+    local success, error = pcall(function()
+        local netFolder = Rs.Packages._Index["sleitnick_net@0.2.0"].net
+        remotes.EquipRod = netFolder["RE/EquipToolFromHotbar"]
+        remotes.ChargeRod = netFolder["RF/ChargeFishingRod"]
+        remotes.RequestFishing = netFolder["RF/RequestFishingMinigameStarted"]
+        remotes.FishingComplete = netFolder["RE/FishingCompleted"]
+        remotes.CancelFishing = netFolder["RF/CancelFishingInputs"]
+    end)
+    
+    if not success then
+        warn("Failed to get remotes:", error)
+        return false
+    end
+    
+    -- Validate all remotes exist
+    for name, remote in pairs(remotes) do
+        if not remote then
+            warn("Missing remote:", name)
+            return false
+        end
+    end
     
     -- Use randomization if enabled
     local useRandom = self.useRandomization ~= false -- default to true
@@ -1492,17 +1553,18 @@ function ZayrosFishingGUI:performFishingCycle()
     local character = self.player.Character
     if not character or not character:FindFirstChild("!!!EQUIPPED_TOOL!!!") then
         local success = pcall(function()
-            CancelFishing:InvokeServer()
+            remotes.CancelFishing:InvokeServer()
             task.wait(0.1)
-            EquipRod:FireServer(1)
+            remotes.EquipRod:FireServer(1)
         end)
         
         if not success then
-            error("Failed to equip fishing rod")
+            warn("Failed to equip fishing rod")
+            return false
         end
         
         task.wait(equipDelay)
-        return -- Try again next cycle
+        return false -- Try again next cycle
     end
     
     -- Perform fishing sequence with randomization
@@ -1513,11 +1575,21 @@ function ZayrosFishingGUI:performFishingCycle()
         x, y = -1.2379989624023438, 0.9800224985802423
     end
     
-    ChargeRod:InvokeServer(workspace:GetServerTimeNow())
-    RequestFishing:InvokeServer(x, y)
-    task.wait(fishingDelay)
-    FishingComplete:FireServer()
-    task.wait(cycleDelay)
+    -- Safe remote calls with error handling
+    local fishingSuccess = pcall(function()
+        remotes.ChargeRod:InvokeServer(workspace:GetServerTimeNow())
+        remotes.RequestFishing:InvokeServer(x, y)
+        task.wait(fishingDelay)
+        remotes.FishingComplete:FireServer()
+        task.wait(cycleDelay)
+    end)
+    
+    if not fishingSuccess then
+        warn("Fishing sequence failed")
+        return false
+    end
+    
+    return true
 end
 
 -- ===== ROD MODIFICATION METHODS =====
@@ -1527,7 +1599,7 @@ function ZayrosFishingGUI:getCurrentRod()
         if character then
             -- Try different ways to find equipped rod
             local tool = character:FindFirstChildOfClass("Tool")
-            if tool then
+            if tool and (tool.Name:lower():find("rod") or tool.Name:lower():find("fishing")) then
                 return tool
             end
             
@@ -1536,13 +1608,20 @@ function ZayrosFishingGUI:getCurrentRod()
             if equippedTool then
                 return equippedTool
             end
+            
+            -- Check all tools in character
+            for _, child in ipairs(character:GetChildren()) do
+                if child:IsA("Tool") and (child.Name:lower():find("rod") or child.Name:lower():find("fishing")) then
+                    return child
+                end
+            end
         end
         
         -- Try finding in backpack if nothing equipped
         local backpack = self.player.Backpack
         if backpack then
             for _, tool in ipairs(backpack:GetChildren()) do
-                if tool:IsA("Tool") and tool.Name:lower():find("rod") then
+                if tool:IsA("Tool") and (tool.Name:lower():find("rod") or tool.Name:lower():find("fishing")) then
                     return tool
                 end
             end
@@ -1551,7 +1630,12 @@ function ZayrosFishingGUI:getCurrentRod()
         return nil
     end)
     
-    return success and rod or nil
+    if not success then
+        warn("Error detecting rod:", rod)
+        return nil
+    end
+    
+    return rod
 end
 
 function ZayrosFishingGUI:getRodStats(rod)
@@ -1992,14 +2076,69 @@ function ZayrosFishingGUI:initialize()
     end)
 end
 
+-- ===== SAFE INITIALIZATION =====
+local function safeInitialize()
+    local success, result = pcall(function()
+        -- Check if required services are available
+        local requiredServices = {"Players", "ReplicatedStorage", "TweenService", "UserInputService"}
+        for _, serviceName in ipairs(requiredServices) do
+            local service = game:GetService(serviceName)
+            if not service then
+                error("Required service not available: " .. serviceName)
+            end
+        end
+        
+        -- Check if ReplicatedStorage structure exists
+        local Rs = game:GetService("ReplicatedStorage")
+        local netPath = Rs:FindFirstChild("Packages")
+        if not netPath then
+            error("Packages folder not found in ReplicatedStorage")
+        end
+        
+        netPath = netPath:FindFirstChild("_Index")
+        if not netPath then
+            error("_Index folder not found")
+        end
+        
+        netPath = netPath:FindFirstChild("sleitnick_net@0.2.0")
+        if not netPath then
+            error("sleitnick_net@0.2.0 folder not found")
+        end
+        
+        netPath = netPath:FindFirstChild("net")
+        if not netPath then
+            error("net folder not found")
+        end
+        
+        print("✅ All required services and structures available")
+        
+        -- Create the GUI
+        local fishingGUI = ZayrosFishingGUI.new()
+        
+        -- Initialize the GUI
+        fishingGUI:initialize()
+        
+        -- Store in global for external access
+        getgenv().ZayrosFishingGUI = fishingGUI
+        
+        print("✅ Zayros FISHIT v2.0 loaded successfully!")
+        print("🎣 Use getgenv().ZayrosFishingGUI to access GUI functions")
+        
+        return fishingGUI
+    end)
+    
+    if not success then
+        warn("❌ Failed to initialize Zayros FISHIT:", result)
+        warn("💡 Possible solutions:")
+        warn("   1. Make sure you're in the correct game")
+        warn("   2. Wait for the game to fully load")
+        warn("   3. Try rejoining the server")
+        warn("   4. The game might have updated and broken the script")
+        return nil
+    end
+    
+    return result
+end
+
 -- ===== USAGE =====
-local fishingGUI = ZayrosFishingGUI.new()
-
--- Initialize the GUI
-fishingGUI:initialize()
-
--- Store in global for external access
-getgenv().ZayrosFishingGUI = fishingGUI
-
--- Return the instance for external control
-return fishingGUI
+return safeInitialize()
