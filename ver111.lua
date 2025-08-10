@@ -14,28 +14,7 @@ local HttpService = game:GetService("HttpService")
 -- Variables
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
-local lastRequestTime = 0
-local REQUEST_COOLDOWN = 2
 local autoFishRunning = false
-
--- HTTP Rate Limiting Protection
-local originalPostAsync = HttpService.PostAsync
-HttpService.PostAsync = function(self, url, data, contentType, ...)
-    local currentTime = tick()
-    if currentTime - lastRequestTime < REQUEST_COOLDOWN then
-        local waitTime = REQUEST_COOLDOWN - (currentTime - lastRequestTime)
-        task.wait(waitTime)
-    end
-    lastRequestTime = tick()
-    
-    local success, result = pcall(originalPostAsync, self, url, data, contentType, ...)
-    if not success and tostring(result):find("429") then
-        warn("HTTP 429 detected, waiting...")
-        task.wait(10)
-        lastRequestTime = tick() + 10
-    end
-    return success and result or error(result)
-end
 
 -- Safe Remote Getting
 local function getRemotes()
@@ -95,9 +74,9 @@ local function getRodStats(rod)
     
     -- Method 1: Check rod attributes
     local stats = {}
-    for _, attr in pairs(rod:GetAttributes()) do
+    for name, attr in pairs(rod:GetAttributes()) do
         if type(attr) == "number" then
-            stats[_] = attr
+            stats[name] = attr
         end
     end
     
@@ -118,9 +97,9 @@ local function getRodStats(rod)
     -- Method 3: Check handle for stats
     local handle = rod:FindFirstChild("Handle")
     if handle then
-        for _, attr in pairs(handle:GetAttributes()) do
+        for name, attr in pairs(handle:GetAttributes()) do
             if type(attr) == "number" then
-                stats[_] = attr
+                stats[name] = attr
             end
         end
     end
