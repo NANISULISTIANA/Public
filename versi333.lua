@@ -1426,11 +1426,11 @@ local function createGUI()
     
     -- Create Rod Mod Page
     local RodModPage = createPage("Rod Mod", false)
-    RodModPage.CanvasSize = UDim2.new(0, 0, 0, 250)
+    RodModPage.CanvasSize = UDim2.new(0, 0, 0, 400)
     
     -- Current Rod Info
     local RodInfoFrame = Instance.new("Frame")
-    RodInfoFrame.Size = UDim2.new(1, -10, 0, 60)
+    RodInfoFrame.Size = UDim2.new(1, -10, 0, 80)
     RodInfoFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     RodInfoFrame.BorderSizePixel = 0
     RodInfoFrame.Parent = RodModPage
@@ -1439,103 +1439,137 @@ local function createGUI()
     RodInfoCorner.CornerRadius = UDim.new(0, 6)
     RodInfoCorner.Parent = RodInfoFrame
     
+    local RodInfoTitle = Instance.new("TextLabel")
+    RodInfoTitle.Size = UDim2.new(1, -10, 0, 20)
+    RodInfoTitle.Position = UDim2.new(0, 5, 0, 5)
+    RodInfoTitle.BackgroundTransparency = 1
+    RodInfoTitle.Text = "📊 Current Rod Information"
+    RodInfoTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    RodInfoTitle.TextScaled = true
+    RodInfoTitle.Font = Enum.Font.SourceSansBold
+    RodInfoTitle.Parent = RodInfoFrame
+    
     local RodInfoLabel = Instance.new("TextLabel")
-    RodInfoLabel.Size = UDim2.new(1, -10, 1, -10)
-    RodInfoLabel.Position = UDim2.new(0, 5, 0, 5)
+    RodInfoLabel.Size = UDim2.new(1, -10, 1, -25)
+    RodInfoLabel.Position = UDim2.new(0, 5, 0, 25)
     RodInfoLabel.BackgroundTransparency = 1
-    RodInfoLabel.Text = "Current Rod: No rod equipped"
-    RodInfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    RodInfoLabel.Text = "No rod equipped - please equip a fishing rod"
+    RodInfoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
     RodInfoLabel.TextScaled = true
     RodInfoLabel.Font = Enum.Font.SourceSans
     RodInfoLabel.TextWrapped = true
     RodInfoLabel.TextYAlignment = Enum.TextYAlignment.Top
     RodInfoLabel.Parent = RodInfoFrame
     
-    -- Rod Modification Inputs
-    local ModInputFrame = Instance.new("Frame")
-    ModInputFrame.Size = UDim2.new(1, -10, 0, 80)
-    ModInputFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    ModInputFrame.BorderSizePixel = 0
-    ModInputFrame.Parent = RodModPage
+    -- Quick Modification Frame
+    local QuickModFrame = Instance.new("Frame")
+    QuickModFrame.Size = UDim2.new(1, -10, 0, 100)
+    QuickModFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    QuickModFrame.BorderSizePixel = 0
+    QuickModFrame.Parent = RodModPage
     
-    local ModInputCorner = Instance.new("UICorner")
-    ModInputCorner.CornerRadius = UDim.new(0, 6)
-    ModInputCorner.Parent = ModInputFrame
+    local QuickModCorner = Instance.new("UICorner")
+    QuickModCorner.CornerRadius = UDim.new(0, 6)
+    QuickModCorner.Parent = QuickModFrame
     
-    -- Quick Mod Values
-    local QuickModLabel = Instance.new("TextLabel")
-    QuickModLabel.Size = UDim2.new(1, 0, 0, 25)
-    QuickModLabel.Position = UDim2.new(0, 0, 0, 0)
-    QuickModLabel.BackgroundTransparency = 1
-    QuickModLabel.Text = "Quick Modification Values:"
-    QuickModLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    QuickModLabel.TextScaled = true
-    QuickModLabel.Font = Enum.Font.SourceSansBold
-    QuickModLabel.Parent = ModInputFrame
+    -- Quick Mod Title
+    local QuickModTitle = Instance.new("TextLabel")
+    QuickModTitle.Size = UDim2.new(1, 0, 0, 25)
+    QuickModTitle.Position = UDim2.new(0, 0, 0, 5)
+    QuickModTitle.BackgroundTransparency = 1
+    QuickModTitle.Text = "⚡ Quick Rod Modification"
+    QuickModTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    QuickModTitle.TextScaled = true
+    QuickModTitle.Font = Enum.Font.SourceSansBold
+    QuickModTitle.Parent = QuickModFrame
     
-    local QuickModButtons = {
+    -- Quick Mod Buttons (First Row)
+    local QuickModButtons1 = {
         {"x100", 100},
         {"x500", 500},
         {"x999", 999},
         {"x9999", 9999}
     }
     
-    for i, data in ipairs(QuickModButtons) do
+    for i, data in ipairs(QuickModButtons1) do
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0.2, -5, 0, 25)
-        btn.Position = UDim2.new((i-1) * 0.25, 0, 0, 30)
+        btn.Size = UDim2.new(0.23, 0, 0, 30)
+        btn.Position = UDim2.new((i-1) * 0.25 + 0.01, 0, 0, 35)
         btn.BackgroundColor3 = Color3.fromRGB(255, 149, 0)
         btn.BorderSizePixel = 0
         btn.Text = data[1]
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.TextScaled = true
         btn.Font = Enum.Font.SourceSansBold
-        btn.Parent = ModInputFrame
+        btn.Parent = QuickModFrame
         
         local btnCorner = Instance.new("UICorner")
         btnCorner.CornerRadius = UDim.new(0, 4)
         btnCorner.Parent = btn
         
+        -- Hover effect
+        btn.MouseEnter:Connect(function()
+            btn.BackgroundColor3 = Color3.fromRGB(255, 179, 30)
+        end)
+        btn.MouseLeave:Connect(function()
+            btn.BackgroundColor3 = Color3.fromRGB(255, 149, 0)
+        end)
+        
         btn.MouseButton1Click:Connect(function()
             modifyRodStats(data[2])
+            -- Update rod info after modification
+            task.wait(0.5)
+            updateRodInfo()
         end)
     end
     
-    -- Advanced Rod Tools
-    local advancedRodTools = {
-        {"🔧 Force Stat Modification", Color3.fromRGB(255, 69, 0)},
-        {"🔍 Inspect Rod Structure", Color3.fromRGB(0, 191, 255)}
+    -- Second row - Special buttons
+    local SpecialButtons = {
+        {"🔧 Force Mod", Color3.fromRGB(255, 69, 0)},
+        {"🔍 Inspect", Color3.fromRGB(0, 191, 255)}
     }
     
-    for i, data in ipairs(advancedRodTools) do
+    for i, data in ipairs(SpecialButtons) do
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -10, 0, 35)
+        btn.Size = UDim2.new(0.48, 0, 0, 25)
+        btn.Position = UDim2.new((i-1) * 0.51 + 0.01, 0, 0, 70)
         btn.BackgroundColor3 = data[2]
         btn.BorderSizePixel = 0
         btn.Text = data[1]
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.TextScaled = true
         btn.Font = Enum.Font.SourceSansBold
-        btn.Parent = RodModPage
+        btn.Parent = QuickModFrame
         
         local btnCorner = Instance.new("UICorner")
-        btnCorner.CornerRadius = UDim.new(0, 6)
+        btnCorner.CornerRadius = UDim.new(0, 4)
         btnCorner.Parent = btn
         
-        if i == 1 then
+        -- Hover effect
+        btn.MouseEnter:Connect(function()
+            local originalColor = data[2]
+            btn.BackgroundColor3 = Color3.fromRGB(
+                math.min(255, originalColor.R * 255 + 30),
+                math.min(255, originalColor.G * 255 + 30),
+                math.min(255, originalColor.B * 255 + 30)
+            )
+        end)
+        btn.MouseLeave:Connect(function()
+            btn.BackgroundColor3 = data[2]
+        end)
+        
+        if i == 1 then -- Force Mod button
             btn.MouseButton1Click:Connect(function()
                 local rod = getCurrentRod()
                 if not rod then
-                    warn("No rod equipped!")
                     if _G.updateStatus then
                         _G.updateStatus("❌ No rod equipped!", Color3.fromRGB(255, 59, 48))
                     end
                     return
                 end
                 
-                print("🔧 Force modifying all possible stats...")
                 if _G.updateStatus then
-                    _G.updateStatus("🔧 Force modifying stats...", Color3.fromRGB(255, 149, 0))
+                    _G.updateStatus("🔧 Force modifying all stats...", Color3.fromRGB(255, 149, 0))
                 end
                 
                 local modified = 0
@@ -1546,14 +1580,12 @@ local function createGUI()
                         if child.Value > 0 and child.Value < 999 then
                             local oldVal = child.Value
                             child.Value = 999
-                            print("Modified " .. child:GetFullName() .. ": " .. oldVal .. " → 999")
                             modified = modified + 1
                         end
                     elseif child:IsA("StringValue") and tonumber(child.Value) then
                         local oldVal = tonumber(child.Value)
                         if oldVal and oldVal > 0 and oldVal < 999 then
                             child.Value = "999"
-                            print("Modified " .. child:GetFullName() .. ": " .. oldVal .. " → 999")
                             modified = modified + 1
                         end
                     end
@@ -1564,14 +1596,12 @@ local function createGUI()
                     for name, value in pairs(child:GetAttributes()) do
                         if type(value) == "number" and value > 0 and value < 999 then
                             child:SetAttribute(name, 999)
-                            print("Modified attribute " .. child:GetFullName() .. "." .. name .. ": " .. value .. " → 999")
                             modified = modified + 1
                         end
                     end
                 end
                 
                 if modified > 0 then
-                    print("✅ Force modified", modified, "stats/attributes")
                     if _G.updateStatus then
                         _G.updateStatus("✅ Force modified " .. modified .. " values", Color3.fromRGB(0, 255, 127))
                     end
@@ -1587,23 +1617,20 @@ local function createGUI()
                                 if remotes.EquipRod then remotes.EquipRod:FireServer(1) end
                             end)
                         end
+                        updateRodInfo()
                     end)
                 else
-                    print("❌ No values found to modify")
                     if _G.updateStatus then
                         _G.updateStatus("❌ No values found to modify", Color3.fromRGB(255, 59, 48))
                     end
                 end
             end)
-        else
+        else -- Inspect button
             btn.MouseButton1Click:Connect(function()
                 local rod = getCurrentRod()
                 if rod then
-                    print("🔍 Inspecting rod:", rod.Name)
-                    print("📊 Current stats:", getRodStats(rod))
-                    
-                    -- Advanced rod analysis
-                    print("🔬 Advanced Rod Analysis:")
+                    print("🔍 === ROD INSPECTION REPORT ===")
+                    print("Rod Name:", rod.Name)
                     print("Rod Class:", rod.ClassName)
                     print("Rod Parent:", rod.Parent and rod.Parent.Name or "None")
                     
@@ -1614,16 +1641,22 @@ local function createGUI()
                         for name, value in pairs(attrs) do
                             print("  " .. name .. ":", value, "(" .. type(value) .. ")")
                         end
-                    else
-                        print("❌ No attributes found on rod")
+                    end
+                    
+                    -- Show stats
+                    local stats = getRodStats(rod)
+                    if next(stats) then
+                        print("📊 Detected Stats:")
+                        for name, value in pairs(stats) do
+                            print("  " .. name .. ":", value)
+                        end
                     end
                     
                     -- Detailed structure analysis
                     local function analyzeContainer(container, path, depth)
-                        if depth > 3 then return end
+                        if depth > 2 then return end
                         
                         for _, child in pairs(container:GetChildren()) do
-                            local childPath = path .. "." .. child.Name
                             print(string.rep("  ", depth) .. "└─ " .. child.Name .. " (" .. child.ClassName .. ")")
                             
                             if child:IsA("NumberValue") or child:IsA("IntValue") then
@@ -1640,25 +1673,142 @@ local function createGUI()
                             end
                             
                             if #child:GetChildren() > 0 then
-                                analyzeContainer(child, childPath, depth + 1)
+                                analyzeContainer(child, path .. "." .. child.Name, depth + 1)
                             end
                         end
                     end
                     
                     print("🏗️ Rod Structure:")
                     analyzeContainer(rod, "Rod", 0)
+                    print("🔍 === END INSPECTION ===")
                     
                     if _G.updateStatus then
-                        _G.updateStatus("🔍 Rod analysis in console", Color3.fromRGB(0, 191, 255))
+                        _G.updateStatus("🔍 Rod inspection completed - check console", Color3.fromRGB(0, 191, 255))
                     end
                 else
-                    warn("No rod found to inspect")
                     if _G.updateStatus then
                         _G.updateStatus("❌ No rod to inspect", Color3.fromRGB(255, 59, 48))
                     end
                 end
             end)
         end
+    end
+    
+    -- Advanced Settings Frame
+    local AdvancedFrame = Instance.new("Frame")
+    AdvancedFrame.Size = UDim2.new(1, -10, 0, 80)
+    AdvancedFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    AdvancedFrame.BorderSizePixel = 0
+    AdvancedFrame.Parent = RodModPage
+    
+    local AdvancedCorner = Instance.new("UICorner")
+    AdvancedCorner.CornerRadius = UDim.new(0, 6)
+    AdvancedCorner.Parent = AdvancedFrame
+    
+    local AdvancedTitle = Instance.new("TextLabel")
+    AdvancedTitle.Size = UDim2.new(1, 0, 0, 25)
+    AdvancedTitle.Position = UDim2.new(0, 0, 0, 5)
+    AdvancedTitle.BackgroundTransparency = 1
+    AdvancedTitle.Text = "🛠️ Advanced Rod Tools"
+    AdvancedTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    AdvancedTitle.TextScaled = true
+    AdvancedTitle.Font = Enum.Font.SourceSansBold
+    AdvancedTitle.Parent = AdvancedFrame
+    
+    -- Custom Value Input
+    local CustomInputFrame = Instance.new("Frame")
+    CustomInputFrame.Size = UDim2.new(1, -10, 0, 30)
+    CustomInputFrame.Position = UDim2.new(0, 5, 0, 35)
+    CustomInputFrame.BackgroundTransparency = 1
+    CustomInputFrame.Parent = AdvancedFrame
+    
+    local CustomLabel = Instance.new("TextLabel")
+    CustomLabel.Size = UDim2.new(0.3, 0, 1, 0)
+    CustomLabel.Position = UDim2.new(0, 0, 0, 0)
+    CustomLabel.BackgroundTransparency = 1
+    CustomLabel.Text = "Custom Value:"
+    CustomLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CustomLabel.TextScaled = true
+    CustomLabel.Font = Enum.Font.SourceSans
+    CustomLabel.TextXAlignment = Enum.TextXAlignment.Left
+    CustomLabel.Parent = CustomInputFrame
+    
+    local CustomInput = Instance.new("TextBox")
+    CustomInput.Size = UDim2.new(0.25, 0, 1, 0)
+    CustomInput.Position = UDim2.new(0.32, 0, 0, 0)
+    CustomInput.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    CustomInput.BorderSizePixel = 0
+    CustomInput.Text = "999"
+    CustomInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CustomInput.TextScaled = true
+    CustomInput.Font = Enum.Font.SourceSans
+    CustomInput.PlaceholderText = "Enter value..."
+    CustomInput.Parent = CustomInputFrame
+    
+    local CustomInputCorner = Instance.new("UICorner")
+    CustomInputCorner.CornerRadius = UDim.new(0, 4)
+    CustomInputCorner.Parent = CustomInput
+    
+    local CustomApplyBtn = Instance.new("TextButton")
+    CustomApplyBtn.Size = UDim2.new(0.4, 0, 1, 0)
+    CustomApplyBtn.Position = UDim2.new(0.58, 0, 0, 0)
+    CustomApplyBtn.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
+    CustomApplyBtn.BorderSizePixel = 0
+    CustomApplyBtn.Text = "🎯 Apply Custom Value"
+    CustomApplyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CustomApplyBtn.TextScaled = true
+    CustomApplyBtn.Font = Enum.Font.SourceSansBold
+    CustomApplyBtn.Parent = CustomInputFrame
+    
+    local CustomApplyCorner = Instance.new("UICorner")
+    CustomApplyCorner.CornerRadius = UDim.new(0, 4)
+    CustomApplyCorner.Parent = CustomApplyBtn
+    
+    CustomApplyBtn.MouseButton1Click:Connect(function()
+        local value = tonumber(CustomInput.Text)
+        if value then
+            modifyRodStats(value)
+            task.wait(0.5)
+            updateRodInfo()
+        else
+            if _G.updateStatus then
+                _G.updateStatus("❌ Invalid number entered", Color3.fromRGB(255, 59, 48))
+            end
+        end
+    end)
+    
+    -- Function to update rod information display
+    function updateRodInfo()
+        task.spawn(function()
+            local rod = getCurrentRod()
+            if rod then
+                local stats = getRodStats(rod)
+                local infoText = "Rod: " .. (rod.Name or "Unknown") .. "\n"
+                
+                if stats and next(stats) then
+                    local statCount = 0
+                    for name, value in pairs(stats) do
+                        if statCount < 3 then -- Limit to 3 stats to fit in display
+                            infoText = infoText .. name .. ": " .. tostring(value) .. " | "
+                            statCount = statCount + 1
+                        end
+                    end
+                    -- Remove trailing " | "
+                    if infoText:sub(-3) == " | " then
+                        infoText = infoText:sub(1, -4)
+                    end
+                    RodInfoLabel.TextColor3 = Color3.fromRGB(0, 255, 127) -- Green for found stats
+                else
+                    infoText = infoText .. "No stats detected - rod may not be supported"
+                    RodInfoLabel.TextColor3 = Color3.fromRGB(255, 193, 7) -- Yellow for warning
+                end
+                
+                RodInfoLabel.Text = infoText
+            else
+                RodInfoLabel.Text = "No rod equipped - please equip a fishing rod"
+                RodInfoLabel.TextColor3 = Color3.fromRGB(200, 200, 200) -- Gray for no rod
+            end
+        end)
     end
     
     -- Page Navigation Functions
@@ -1689,19 +1839,7 @@ local function createGUI()
             RodModPage.Visible = true
             navBtns[4].BackgroundColor3 = Color3.fromRGB(0, 150, 255)
             -- Update rod info when entering rod mod page
-            task.spawn(function()
-                local rod = getCurrentRod()
-                if rod then
-                    local stats = getRodStats(rod)
-                    local infoText = "Current Rod: " .. rod.Name
-                    if stats then
-                        infoText = infoText .. "\nStats detected: " .. tostring(#stats > 0)
-                    end
-                    RodInfoLabel.Text = infoText
-                else
-                    RodInfoLabel.Text = "Current Rod: No rod equipped"
-                end
-            end)
+            updateRodInfo()
         end
         
         Title.Text = "🎣 Enhanced Fishing - " .. pageName
