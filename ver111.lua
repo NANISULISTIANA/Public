@@ -142,18 +142,25 @@ local function modifyRodStats(multiplier)
     return success
 end
 
--- Enhanced Auto Fishing
+-- Enhanced Auto Fishing with Status Updates
 local function startAutoFish()
     if autoFishRunning then
         print("Auto fishing already running!")
+        if _G.updateStatus then
+            _G.updateStatus("🔄 Auto fishing already running!", Color3.fromRGB(255, 193, 7))
+        end
         return
     end
     
     autoFishRunning = true
     print("🎣 Starting enhanced auto fishing...")
+    if _G.updateStatus then
+        _G.updateStatus("🎣 Auto fishing started!", Color3.fromRGB(0, 255, 127))
+    end
     
     local consecutiveErrors = 0
     local maxErrors = 3
+    local fishCount = 0
     
     task.spawn(function()
         while autoFishRunning do
@@ -173,6 +180,9 @@ local function startAutoFish()
                 local rod = getCurrentRod()
                 if not rod or not character:FindFirstChild("!!!EQUIPPED_TOOL!!!") then
                     print("🎣 Equipping rod...")
+                    if _G.updateStatus then
+                        _G.updateStatus("🎣 Equipping rod...", Color3.fromRGB(255, 149, 0))
+                    end
                     if remotes.CancelFishing then
                         remotes.CancelFishing:InvokeServer()
                     end
@@ -191,6 +201,10 @@ local function startAutoFish()
                 local y = baseY + (math.random(-100, 100) * variance / 100)
                 
                 print("🎣 Fishing at:", math.floor(x*1000)/1000, math.floor(y*1000)/1000)
+                fishCount = fishCount + 1
+                if _G.updateStatus then
+                    _G.updateStatus("🎣 Fishing... (Cast #" .. fishCount .. ")", Color3.fromRGB(0, 255, 127))
+                end
                 
                 if remotes.ChargeRod then
                     remotes.ChargeRod:InvokeServer(workspace:GetServerTimeNow())
@@ -213,8 +227,15 @@ local function startAutoFish()
                 consecutiveErrors = consecutiveErrors + 1
                 warn("❌ Fishing error #" .. consecutiveErrors .. ":", result)
                 
+                if _G.updateStatus then
+                    _G.updateStatus("❌ Error #" .. consecutiveErrors .. ": " .. tostring(result):sub(1,30), Color3.fromRGB(255, 59, 48))
+                end
+                
                 if consecutiveErrors >= maxErrors then
                     print("🛑 Too many errors, stopping auto fishing")
+                    if _G.updateStatus then
+                        _G.updateStatus("🛑 Stopped: Too many errors", Color3.fromRGB(255, 59, 48))
+                    end
                     autoFishRunning = false
                     break
                 end
@@ -226,10 +247,13 @@ local function startAutoFish()
         end
         
         print("⏹️ Auto fishing stopped")
+        if _G.updateStatus then
+            _G.updateStatus("⏹️ Auto fishing stopped", Color3.fromRGB(255, 193, 7))
+        end
     end)
 end
 
--- Stop Auto Fishing
+-- Stop Auto Fishing with Status Update
 local function stopAutoFish()
     autoFishRunning = false
     local remotes = getRemotes()
@@ -239,6 +263,9 @@ local function stopAutoFish()
         end)
     end
     print("⏹️ Auto fishing manually stopped")
+    if _G.updateStatus then
+        _G.updateStatus("⏹️ Auto fishing manually stopped", Color3.fromRGB(255, 193, 7))
+    end
 end
 
 -- Safe Boat Functions
@@ -303,7 +330,7 @@ local function sellAllFish()
     return success
 end
 
--- Create GUI
+-- Create Enhanced GUI with Minimize and Floating
 local function createGUI()
     -- Remove existing GUI
     local existingGUI = PlayerGui:FindFirstChild("FishingGUI")
@@ -320,9 +347,9 @@ local function createGUI()
     -- Main Frame
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 300, 0, 400)
+    MainFrame.Size = UDim2.new(0, 300, 0, 420)
     MainFrame.Position = UDim2.new(0, 50, 0, 50)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     MainFrame.BorderSizePixel = 0
     MainFrame.Active = true
     MainFrame.Draggable = true
@@ -330,67 +357,216 @@ local function createGUI()
     
     -- Corner for main frame
     local MainCorner = Instance.new("UICorner")
-    MainCorner.CornerRadius = UDim.new(0, 10)
+    MainCorner.CornerRadius = UDim.new(0, 12)
     MainCorner.Parent = MainFrame
     
-    -- Title
+    -- Shadow Frame (for floating effect)
+    local ShadowFrame = Instance.new("Frame")
+    ShadowFrame.Name = "Shadow"
+    ShadowFrame.Size = UDim2.new(1, 6, 1, 6)
+    ShadowFrame.Position = UDim2.new(0, -3, 0, -3)
+    ShadowFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    ShadowFrame.BackgroundTransparency = 0.7
+    ShadowFrame.BorderSizePixel = 0
+    ShadowFrame.ZIndex = -1
+    ShadowFrame.Parent = MainFrame
+    
+    local ShadowCorner = Instance.new("UICorner")
+    ShadowCorner.CornerRadius = UDim.new(0, 12)
+    ShadowCorner.Parent = ShadowFrame
+    
+    -- Title Bar
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 40)
+    TitleBar.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    TitleBar.BorderSizePixel = 0
+    TitleBar.Parent = MainFrame
+    
+    local TitleCorner = Instance.new("UICorner")
+    TitleCorner.CornerRadius = UDim.new(0, 12)
+    TitleCorner.Parent = TitleBar
+    
+    -- Fix title bar corners (only top corners)
+    local TitleFix = Instance.new("Frame")
+    TitleFix.Size = UDim2.new(1, 0, 0, 20)
+    TitleFix.Position = UDim2.new(0, 0, 1, -20)
+    TitleFix.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    TitleFix.BorderSizePixel = 0
+    TitleFix.Parent = TitleBar
+    
+    -- Title Text
     local Title = Instance.new("TextLabel")
     Title.Name = "Title"
-    Title.Size = UDim2.new(1, 0, 0, 50)
-    Title.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-    Title.BorderSizePixel = 0
+    Title.Size = UDim2.new(0.7, 0, 1, 0)
+    Title.Position = UDim2.new(0.05, 0, 0, 0)
+    Title.BackgroundTransparency = 1
     Title.Text = "🎣 Enhanced Fishing Script"
     Title.TextColor3 = Color3.fromRGB(255, 255, 255)
     Title.TextScaled = true
     Title.Font = Enum.Font.GothamBold
-    Title.Parent = MainFrame
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.Parent = TitleBar
     
-    -- Title corner
-    local TitleCorner = Instance.new("UICorner")
-    TitleCorner.CornerRadius = UDim.new(0, 10)
-    TitleCorner.Parent = Title
+    -- Minimize Button
+    local MinimizeBtn = Instance.new("TextButton")
+    MinimizeBtn.Name = "MinimizeBtn"
+    MinimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+    MinimizeBtn.Position = UDim2.new(1, -70, 0, 5)
+    MinimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 193, 7)
+    MinimizeBtn.BorderSizePixel = 0
+    MinimizeBtn.Text = "−"
+    MinimizeBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+    MinimizeBtn.TextScaled = true
+    MinimizeBtn.Font = Enum.Font.GothamBold
+    MinimizeBtn.Parent = TitleBar
+    
+    local MinimizeCorner = Instance.new("UICorner")
+    MinimizeCorner.CornerRadius = UDim.new(0, 15)
+    MinimizeCorner.Parent = MinimizeBtn
+    
+    -- Close Button
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Name = "CloseBtn"
+    CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+    CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 59, 48)
+    CloseBtn.BorderSizePixel = 0
+    CloseBtn.Text = "×"
+    CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseBtn.TextScaled = true
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.Parent = TitleBar
+    
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 15)
+    CloseCorner.Parent = CloseBtn
+    
+    -- Content Frame
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Name = "Content"
+    ContentFrame.Size = UDim2.new(1, 0, 1, -45)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 45)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Parent = MainFrame
+    
+    -- Status Label
+    local StatusLabel = Instance.new("TextLabel")
+    StatusLabel.Name = "Status"
+    StatusLabel.Size = UDim2.new(0.9, 0, 0, 25)
+    StatusLabel.Position = UDim2.new(0.05, 0, 0, 5)
+    StatusLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    StatusLabel.BorderSizePixel = 0
+    StatusLabel.Text = "🔍 Status: Ready"
+    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+    StatusLabel.TextScaled = true
+    StatusLabel.Font = Enum.Font.Gotham
+    StatusLabel.Parent = ContentFrame
+    
+    local StatusCorner = Instance.new("UICorner")
+    StatusCorner.CornerRadius = UDim.new(0, 5)
+    StatusCorner.Parent = StatusLabel
     
     -- Buttons
     local buttonData = {
-        {"🎣 Start Auto Fish", startAutoFish},
-        {"⏹️ Stop Auto Fish", stopAutoFish},
-        {"⚡ Modify Rod Stats (x999)", function() modifyRodStats(999) end},
-        {"🚤 Spawn Small Boat", function() spawnBoat("Small Boat") end},
-        {"🛥️ Spawn Large Boat", function() spawnBoat("Large Boat") end},
-        {"❌ Despawn Boat", despawnBoat},
-        {"💰 Sell All Fish", sellAllFish}
+        {"🎣 Start Auto Fish", startAutoFish, Color3.fromRGB(0, 200, 83)},
+        {"⏹️ Stop Auto Fish", stopAutoFish, Color3.fromRGB(255, 59, 48)},
+        {"⚡ Modify Rod Stats (x999)", function() modifyRodStats(999) end, Color3.fromRGB(255, 149, 0)},
+        {"🚤 Spawn Small Boat", function() spawnBoat("Small Boat") end, Color3.fromRGB(0, 122, 255)},
+        {"🛥️ Spawn Large Boat", function() spawnBoat("Large Boat") end, Color3.fromRGB(88, 86, 214)},
+        {"❌ Despawn Boat", despawnBoat, Color3.fromRGB(255, 45, 85)},
+        {"💰 Sell All Fish", sellAllFish, Color3.fromRGB(255, 204, 0)}
     }
     
     for i, data in ipairs(buttonData) do
         local Button = Instance.new("TextButton")
         Button.Name = "Button" .. i
         Button.Size = UDim2.new(0.9, 0, 0, 40)
-        Button.Position = UDim2.new(0.05, 0, 0, 60 + (i-1) * 50)
-        Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        Button.Position = UDim2.new(0.05, 0, 0, 35 + (i-1) * 50)
+        Button.BackgroundColor3 = data[3]
         Button.BorderSizePixel = 0
         Button.Text = data[1]
         Button.TextColor3 = Color3.fromRGB(255, 255, 255)
         Button.TextScaled = true
-        Button.Font = Enum.Font.Gotham
-        Button.Parent = MainFrame
+        Button.Font = Enum.Font.GothamSemibold
+        Button.Parent = ContentFrame
         
         local ButtonCorner = Instance.new("UICorner")
-        ButtonCorner.CornerRadius = UDim.new(0, 5)
+        ButtonCorner.CornerRadius = UDim.new(0, 8)
         ButtonCorner.Parent = Button
         
         Button.MouseButton1Click:Connect(data[2])
         
-        -- Hover effect
+        -- Enhanced hover effect
         Button.MouseEnter:Connect(function()
-            TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 70, 70)}):Play()
+            local originalColor = data[3]
+            local hoverColor = Color3.fromRGB(
+                math.min(255, originalColor.R * 255 + 30),
+                math.min(255, originalColor.G * 255 + 30),
+                math.min(255, originalColor.B * 255 + 30)
+            )
+            TweenService:Create(Button, TweenInfo.new(0.2), {
+                BackgroundColor3 = hoverColor,
+                Size = UDim2.new(0.92, 0, 0, 42)
+            }):Play()
         end)
         
         Button.MouseLeave:Connect(function()
-            TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
+            TweenService:Create(Button, TweenInfo.new(0.2), {
+                BackgroundColor3 = data[3],
+                Size = UDim2.new(0.9, 0, 0, 40)
+            }):Play()
         end)
     end
     
-    print("✅ GUI created successfully")
+    -- Variables for minimize functionality
+    local isMinimized = false
+    local originalSize = MainFrame.Size
+    local minimizedSize = UDim2.new(0, 300, 0, 40)
+    
+    -- Minimize functionality
+    MinimizeBtn.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        
+        if isMinimized then
+            MinimizeBtn.Text = "+"
+            ContentFrame.Visible = false
+            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {
+                Size = minimizedSize
+            }):Play()
+        else
+            MinimizeBtn.Text = "−"
+            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {
+                Size = originalSize
+            }):Play()
+            task.wait(0.3)
+            ContentFrame.Visible = true
+        end
+    end)
+    
+    -- Close functionality
+    CloseBtn.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+    
+    -- Update status function
+    _G.updateStatus = function(text, color)
+        StatusLabel.Text = text
+        StatusLabel.TextColor3 = color or Color3.fromRGB(0, 255, 127)
+    end
+    
+    -- Floating animation
+    spawn(function()
+        local floating = true
+        while MainFrame.Parent and floating do
+            TweenService:Create(MainFrame, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+                Position = MainFrame.Position + UDim2.new(0, 0, 0, 3)
+            }):Play()
+            task.wait(2)
+        end
+    end)
+    
+    print("✅ Enhanced GUI created successfully with minimize and floating effects")
 end
 
 -- Run diagnostics on startup
