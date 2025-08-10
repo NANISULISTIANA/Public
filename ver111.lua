@@ -432,7 +432,437 @@ local function sellAllFish()
     return success
 end
 
--- Create Enhanced GUI with Minimize and Floating
+-- Teleport Functions
+local function teleportToLocation(cframe)
+    local success = pcall(function()
+        local character = Player.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            character.HumanoidRootPart.CFrame = cframe
+        else
+            error("Character or HumanoidRootPart not found")
+        end
+    end)
+    
+    if success then
+        print("✅ Teleported successfully!")
+        if _G.updateStatus then
+            _G.updateStatus("✅ Teleported successfully!", Color3.fromRGB(0, 255, 127))
+        end
+    else
+        warn("❌ Failed to teleport")
+        if _G.updateStatus then
+            _G.updateStatus("❌ Failed to teleport", Color3.fromRGB(255, 59, 48))
+        end
+    end
+    
+    return success
+end
+
+local function teleportToPlayer(targetPlayerName)
+    local success, result = pcall(function()
+        local targetPlayer = nil
+        
+        -- Find the target player
+        for _, player in pairs(Players:GetPlayers()) do
+            if player.Name:lower():find(targetPlayerName:lower()) or player.DisplayName:lower():find(targetPlayerName:lower()) then
+                targetPlayer = player
+                break
+            end
+        end
+        
+        if not targetPlayer then
+            error("Player '" .. targetPlayerName .. "' not found")
+        end
+        
+        if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            error("Target player has no character or HumanoidRootPart")
+        end
+        
+        return teleportToLocation(targetPlayer.Character.HumanoidRootPart.CFrame)
+    end)
+    
+    if not success then
+        warn("❌ Failed to teleport to player:", result)
+        if _G.updateStatus then
+            _G.updateStatus("❌ Player teleport failed: " .. tostring(result):sub(1,25), Color3.fromRGB(255, 59, 48))
+        end
+    end
+    
+    return success
+end
+
+local function teleportToIsland(islandName)
+    local success, result = pcall(function()
+        -- Common fishing game island locations
+        local islandCoordinates = {
+            ["Spawn"] = CFrame.new(1.3, 56, -177.9),
+            ["Moosewood"] = CFrame.new(373, 179, 430),
+            ["Roslit Bay"] = CFrame.new(-1477, 179, 686),
+            ["Snowcap Island"] = CFrame.new(2648, 179, 2522),
+            ["Mushgrove Swamp"] = CFrame.new(2500, 179, -723),
+            ["Vertigo"] = CFrame.new(-112, 179, -1026),
+            ["Pharaoh's Den"] = CFrame.new(-1863, 179, 1567),
+            ["Desolate Deep"] = CFrame.new(-1751, 179, -2847),
+            ["The Depths"] = CFrame.new(1000, -500, -3000),
+            ["Ancient Isle"] = CFrame.new(-910, 179, -1123),
+            ["Statue Of Sovereignty"] = CFrame.new(41, 177, -1030),
+            ["Sunstone Island"] = CFrame.new(-966, 179, -1097),
+            ["Forsaken Shores"] = CFrame.new(-2893, 179, 1714),
+            ["Altar"] = CFrame.new(1296, 179, -801)
+        }
+        
+        -- Try to find exact match first
+        local targetCFrame = islandCoordinates[islandName]
+        if targetCFrame then
+            return teleportToLocation(targetCFrame)
+        end
+        
+        -- Try to find partial match
+        for name, cframe in pairs(islandCoordinates) do
+            if name:lower():find(islandName:lower()) then
+                print("🔍 Found partial match:", name)
+                return teleportToLocation(cframe)
+            end
+        end
+        
+        -- Try to find island in workspace
+        local islandFolder = workspace:FindFirstChild("!!!! ISLAND LOCATIONS !!!!")
+        if islandFolder then
+            for _, island in pairs(islandFolder:GetChildren()) do
+                if island:IsA("BasePart") and island.Name:lower():find(islandName:lower()) then
+                    print("🔍 Found island in workspace:", island.Name)
+                    return teleportToLocation(island.CFrame)
+                end
+            end
+        end
+        
+        error("Island '" .. islandName .. "' not found")
+    end)
+    
+    if not success then
+        warn("❌ Failed to teleport to island:", result)
+        if _G.updateStatus then
+            _G.updateStatus("❌ Island teleport failed: " .. tostring(result):sub(1,25), Color3.fromRGB(255, 59, 48))
+        end
+    end
+    
+    return success
+end
+
+local function getAvailableIslands()
+    local islands = {}
+    
+    -- Add predefined islands
+    local predefinedIslands = {
+        "Spawn", "Moosewood", "Roslit Bay", "Snowcap Island", 
+        "Mushgrove Swamp", "Vertigo", "Pharaoh's Den", 
+        "Desolate Deep", "The Depths", "Ancient Isle",
+        "Statue Of Sovereignty", "Sunstone Island", 
+        "Forsaken Shores", "Altar"
+    }
+    
+    for _, island in ipairs(predefinedIslands) do
+        table.insert(islands, island)
+    end
+    
+    -- Try to find additional islands in workspace
+    pcall(function()
+        local islandFolder = workspace:FindFirstChild("!!!! ISLAND LOCATIONS !!!!")
+        if islandFolder then
+            for _, island in pairs(islandFolder:GetChildren()) do
+                if island:IsA("BasePart") then
+                    -- Avoid duplicates
+                    local found = false
+                    for _, existing in ipairs(islands) do
+                        if existing:lower() == island.Name:lower() then
+                            found = true
+                            break
+                        end
+                    end
+                    if not found then
+                        table.insert(islands, island.Name)
+                    end
+                end
+            end
+        end
+    end)
+    
+    return islands
+end
+
+local function getAvailablePlayers()
+    local players = {}
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            table.insert(players, player.Name)
+        end
+    end
+    
+    return players
+end
+
+-- Create Advanced Teleport Menu
+local function createTeleportMenu()
+    -- Remove existing teleport menu
+    local existingMenu = PlayerGui:FindFirstChild("TeleportMenu")
+    if existingMenu then
+        existingMenu:Destroy()
+    end
+    
+    -- Create teleport menu GUI
+    local TeleportGui = Instance.new("ScreenGui")
+    TeleportGui.Name = "TeleportMenu"
+    TeleportGui.ResetOnSpawn = false
+    TeleportGui.Parent = PlayerGui
+    
+    -- Main frame
+    local MenuFrame = Instance.new("Frame")
+    MenuFrame.Name = "MenuFrame"
+    MenuFrame.Size = UDim2.new(0, 400, 0, 500)
+    MenuFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+    MenuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    MenuFrame.BorderSizePixel = 0
+    MenuFrame.Parent = TeleportGui
+    
+    local MenuCorner = Instance.new("UICorner")
+    MenuCorner.CornerRadius = UDim.new(0, 15)
+    MenuCorner.Parent = MenuFrame
+    
+    -- Title bar
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 40)
+    TitleBar.BackgroundColor3 = Color3.fromRGB(128, 0, 128)
+    TitleBar.BorderSizePixel = 0
+    TitleBar.Parent = MenuFrame
+    
+    local TitleCorner = Instance.new("UICorner")
+    TitleCorner.CornerRadius = UDim.new(0, 15)
+    TitleCorner.Parent = TitleBar
+    
+    local TitleFix = Instance.new("Frame")
+    TitleFix.Size = UDim2.new(1, 0, 0, 20)
+    TitleFix.Position = UDim2.new(0, 0, 1, -20)
+    TitleFix.BackgroundColor3 = Color3.fromRGB(128, 0, 128)
+    TitleFix.BorderSizePixel = 0
+    TitleFix.Parent = TitleBar
+    
+    local TitleText = Instance.new("TextLabel")
+    TitleText.Size = UDim2.new(0.8, 0, 1, 0)
+    TitleText.Position = UDim2.new(0.05, 0, 0, 0)
+    TitleText.BackgroundTransparency = 1
+    TitleText.Text = "🗺️ Teleport Menu"
+    TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleText.TextScaled = true
+    TitleText.Font = Enum.Font.GothamBold
+    TitleText.TextXAlignment = Enum.TextXAlignment.Left
+    TitleText.Parent = TitleBar
+    
+    -- Close button
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Size = UDim2.new(0, 30, 0, 30)
+    CloseButton.Position = UDim2.new(1, -35, 0, 5)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 59, 48)
+    CloseButton.BorderSizePixel = 0
+    CloseButton.Text = "×"
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.TextScaled = true
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.Parent = TitleBar
+    
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 15)
+    CloseCorner.Parent = CloseButton
+    
+    CloseButton.MouseButton1Click:Connect(function()
+        TeleportGui:Destroy()
+    end)
+    
+    -- Tab buttons
+    local TabFrame = Instance.new("Frame")
+    TabFrame.Size = UDim2.new(1, 0, 0, 40)
+    TabFrame.Position = UDim2.new(0, 0, 0, 45)
+    TabFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    TabFrame.BorderSizePixel = 0
+    TabFrame.Parent = MenuFrame
+    
+    local IslandTab = Instance.new("TextButton")
+    IslandTab.Size = UDim2.new(0.5, 0, 1, 0)
+    IslandTab.Position = UDim2.new(0, 0, 0, 0)
+    IslandTab.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    IslandTab.BorderSizePixel = 0
+    IslandTab.Text = "🏝️ Islands"
+    IslandTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    IslandTab.TextScaled = true
+    IslandTab.Font = Enum.Font.GothamSemibold
+    IslandTab.Parent = TabFrame
+    
+    local PlayerTab = Instance.new("TextButton")
+    PlayerTab.Size = UDim2.new(0.5, 0, 1, 0)
+    PlayerTab.Position = UDim2.new(0.5, 0, 0, 0)
+    PlayerTab.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    PlayerTab.BorderSizePixel = 0
+    PlayerTab.Text = "👥 Players"
+    PlayerTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    PlayerTab.TextScaled = true
+    PlayerTab.Font = Enum.Font.GothamSemibold
+    PlayerTab.Parent = TabFrame
+    
+    -- Content area
+    local ContentArea = Instance.new("ScrollingFrame")
+    ContentArea.Size = UDim2.new(1, -20, 1, -100)
+    ContentArea.Position = UDim2.new(0, 10, 0, 90)
+    ContentArea.BackgroundTransparency = 1
+    ContentArea.BorderSizePixel = 0
+    ContentArea.ScrollBarThickness = 6
+    ContentArea.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ContentArea.Parent = MenuFrame
+    
+    local ContentLayout = Instance.new("UIListLayout")
+    ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ContentLayout.Padding = UDim.new(0, 5)
+    ContentLayout.Parent = ContentArea
+    
+    -- Function to create teleport button
+    local function createTeleportButton(name, action, color)
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(1, -10, 0, 40)
+        button.BackgroundColor3 = color or Color3.fromRGB(70, 70, 70)
+        button.BorderSizePixel = 0
+        button.Text = name
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextScaled = true
+        button.Font = Enum.Font.GothamSemibold
+        button.Parent = ContentArea
+        
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0, 8)
+        buttonCorner.Parent = button
+        
+        button.MouseButton1Click:Connect(function()
+            action()
+            TeleportGui:Destroy()
+        end)
+        
+        -- Hover effect
+        button.MouseEnter:Connect(function()
+            local hoverColor = Color3.fromRGB(
+                math.min(255, color.R * 255 + 30),
+                math.min(255, color.G * 255 + 30),
+                math.min(255, color.B * 255 + 30)
+            )
+            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = hoverColor}):Play()
+        end)
+        
+        button.MouseLeave:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = color}):Play()
+        end)
+        
+        return button
+    end
+    
+    -- Function to populate islands
+    local function showIslands()
+        -- Clear content
+        for _, child in pairs(ContentArea:GetChildren()) do
+            if child:IsA("TextButton") then
+                child:Destroy()
+            end
+        end
+        
+        local islands = getAvailableIslands()
+        for _, island in ipairs(islands) do
+            createTeleportButton("🏝️ " .. island, function()
+                teleportToIsland(island)
+            end, Color3.fromRGB(34, 139, 34))
+        end
+        
+        -- Update canvas size
+        ContentArea.CanvasSize = UDim2.new(0, 0, 0, #islands * 45)
+    end
+    
+    -- Function to populate players
+    local function showPlayers()
+        -- Clear content
+        for _, child in pairs(ContentArea:GetChildren()) do
+            if child:IsA("TextButton") then
+                child:Destroy()
+            end
+        end
+        
+        local players = getAvailablePlayers()
+        if #players == 0 then
+            local noPlayersLabel = Instance.new("TextLabel")
+            noPlayersLabel.Size = UDim2.new(1, 0, 0, 40)
+            noPlayersLabel.BackgroundTransparency = 1
+            noPlayersLabel.Text = "No players available to teleport to"
+            noPlayersLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+            noPlayersLabel.TextScaled = true
+            noPlayersLabel.Font = Enum.Font.Gotham
+            noPlayersLabel.Parent = ContentArea
+        else
+            for _, playerName in ipairs(players) do
+                createTeleportButton("👤 " .. playerName, function()
+                    teleportToPlayer(playerName)
+                end, Color3.fromRGB(255, 69, 0))
+            end
+        end
+        
+        -- Update canvas size
+        ContentArea.CanvasSize = UDim2.new(0, 0, 0, math.max(#players, 1) * 45)
+    end
+    
+    -- Tab switching
+    IslandTab.MouseButton1Click:Connect(function()
+        IslandTab.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+        PlayerTab.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        showIslands()
+    end)
+    
+    PlayerTab.MouseButton1Click:Connect(function()
+        PlayerTab.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+        IslandTab.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        showPlayers()
+    end)
+    
+    -- Make draggable
+    local dragToggle = false
+    local dragStart = nil
+    local startPos = nil
+    
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragToggle = true
+            dragStart = input.Position
+            startPos = MenuFrame.Position
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragToggle and input.UserInputType == Enum.UserInputType.MouseMovement and dragStart and startPos then
+            local delta = input.Position - dragStart
+            MenuFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragToggle = false
+        end
+    end)
+    
+    -- Show islands by default
+    showIslands()
+    
+    print("✅ Teleport menu opened")
+    if _G.updateStatus then
+        _G.updateStatus("📱 Teleport menu opened", Color3.fromRGB(128, 0, 128))
+    end
+end
+
+-- Create Enhanced GUI with Floating Icon Toggle
 local function createGUI()
     -- Remove existing GUI
     local existingGUI = PlayerGui:FindFirstChild("FishingGUI")
@@ -446,53 +876,88 @@ local function createGUI()
     ScreenGui.ResetOnSpawn = false
     ScreenGui.Parent = PlayerGui
     
-    -- Main Frame
+    -- Floating Icon Button
+    local FloatingIcon = Instance.new("TextButton")
+    FloatingIcon.Name = "FloatingIcon"
+    FloatingIcon.Size = UDim2.new(0, 60, 0, 60)
+    FloatingIcon.Position = UDim2.new(0, 20, 0.5, -30)
+    FloatingIcon.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    FloatingIcon.BorderSizePixel = 0
+    FloatingIcon.Text = "🎣"
+    FloatingIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FloatingIcon.TextScaled = true
+    FloatingIcon.Font = Enum.Font.GothamBold
+    FloatingIcon.Active = true
+    FloatingIcon.Draggable = true
+    FloatingIcon.Parent = ScreenGui
+    
+    local IconCorner = Instance.new("UICorner")
+    IconCorner.CornerRadius = UDim.new(0, 30)
+    IconCorner.Parent = FloatingIcon
+    
+    -- Icon Shadow
+    local IconShadow = Instance.new("Frame")
+    IconShadow.Name = "Shadow"
+    IconShadow.Size = UDim2.new(1, 4, 1, 4)
+    IconShadow.Position = UDim2.new(0, -2, 0, -2)
+    IconShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    IconShadow.BackgroundTransparency = 0.6
+    IconShadow.BorderSizePixel = 0
+    IconShadow.ZIndex = -1
+    IconShadow.Parent = FloatingIcon
+    
+    local ShadowCorner = Instance.new("UICorner")
+    ShadowCorner.CornerRadius = UDim.new(0, 30)
+    ShadowCorner.Parent = IconShadow
+    
+    -- Main Panel (Initially Hidden)
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 300, 0, 470)
-    MainFrame.Position = UDim2.new(0, 50, 0, 50)
+    MainFrame.Size = UDim2.new(0, 320, 0, 550)
+    MainFrame.Position = UDim2.new(0.5, -160, 0.5, -275)
     MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     MainFrame.BorderSizePixel = 0
     MainFrame.Active = true
     MainFrame.Draggable = true
+    MainFrame.Visible = false
     MainFrame.Parent = ScreenGui
     
-    -- Corner for main frame
+    -- Main Frame Corner
     local MainCorner = Instance.new("UICorner")
-    MainCorner.CornerRadius = UDim.new(0, 12)
+    MainCorner.CornerRadius = UDim.new(0, 15)
     MainCorner.Parent = MainFrame
     
-    -- Shadow Frame (for floating effect)
-    local ShadowFrame = Instance.new("Frame")
-    ShadowFrame.Name = "Shadow"
-    ShadowFrame.Size = UDim2.new(1, 6, 1, 6)
-    ShadowFrame.Position = UDim2.new(0, -3, 0, -3)
-    ShadowFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    ShadowFrame.BackgroundTransparency = 0.7
-    ShadowFrame.BorderSizePixel = 0
-    ShadowFrame.ZIndex = -1
-    ShadowFrame.Parent = MainFrame
+    -- Main Frame Shadow
+    local MainShadow = Instance.new("Frame")
+    MainShadow.Name = "Shadow"
+    MainShadow.Size = UDim2.new(1, 8, 1, 8)
+    MainShadow.Position = UDim2.new(0, -4, 0, -4)
+    MainShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    MainShadow.BackgroundTransparency = 0.7
+    MainShadow.BorderSizePixel = 0
+    MainShadow.ZIndex = -1
+    MainShadow.Parent = MainFrame
     
-    local ShadowCorner = Instance.new("UICorner")
-    ShadowCorner.CornerRadius = UDim.new(0, 12)
-    ShadowCorner.Parent = ShadowFrame
+    local MainShadowCorner = Instance.new("UICorner")
+    MainShadowCorner.CornerRadius = UDim.new(0, 15)
+    MainShadowCorner.Parent = MainShadow
     
     -- Title Bar
     local TitleBar = Instance.new("Frame")
     TitleBar.Name = "TitleBar"
-    TitleBar.Size = UDim2.new(1, 0, 0, 40)
+    TitleBar.Size = UDim2.new(1, 0, 0, 45)
     TitleBar.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
     TitleBar.BorderSizePixel = 0
     TitleBar.Parent = MainFrame
     
     local TitleCorner = Instance.new("UICorner")
-    TitleCorner.CornerRadius = UDim.new(0, 12)
+    TitleCorner.CornerRadius = UDim.new(0, 15)
     TitleCorner.Parent = TitleBar
     
     -- Fix title bar corners (only top corners)
     local TitleFix = Instance.new("Frame")
-    TitleFix.Size = UDim2.new(1, 0, 0, 20)
-    TitleFix.Position = UDim2.new(0, 0, 1, -20)
+    TitleFix.Size = UDim2.new(1, 0, 0, 25)
+    TitleFix.Position = UDim2.new(0, 0, 1, -25)
     TitleFix.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
     TitleFix.BorderSizePixel = 0
     TitleFix.Parent = TitleBar
@@ -500,7 +965,7 @@ local function createGUI()
     -- Title Text
     local Title = Instance.new("TextLabel")
     Title.Name = "Title"
-    Title.Size = UDim2.new(0.7, 0, 1, 0)
+    Title.Size = UDim2.new(0.75, 0, 1, 0)
     Title.Position = UDim2.new(0.05, 0, 0, 0)
     Title.BackgroundTransparency = 1
     Title.Text = "🎣 Enhanced Fishing Script"
@@ -510,28 +975,11 @@ local function createGUI()
     Title.TextXAlignment = Enum.TextXAlignment.Left
     Title.Parent = TitleBar
     
-    -- Minimize Button
-    local MinimizeBtn = Instance.new("TextButton")
-    MinimizeBtn.Name = "MinimizeBtn"
-    MinimizeBtn.Size = UDim2.new(0, 30, 0, 30)
-    MinimizeBtn.Position = UDim2.new(1, -70, 0, 5)
-    MinimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 193, 7)
-    MinimizeBtn.BorderSizePixel = 0
-    MinimizeBtn.Text = "−"
-    MinimizeBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-    MinimizeBtn.TextScaled = true
-    MinimizeBtn.Font = Enum.Font.GothamBold
-    MinimizeBtn.Parent = TitleBar
-    
-    local MinimizeCorner = Instance.new("UICorner")
-    MinimizeCorner.CornerRadius = UDim.new(0, 15)
-    MinimizeCorner.Parent = MinimizeBtn
-    
     -- Close Button
     local CloseBtn = Instance.new("TextButton")
     CloseBtn.Name = "CloseBtn"
-    CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-    CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+    CloseBtn.Size = UDim2.new(0, 35, 0, 35)
+    CloseBtn.Position = UDim2.new(1, -40, 0, 5)
     CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 59, 48)
     CloseBtn.BorderSizePixel = 0
     CloseBtn.Text = "×"
@@ -541,21 +989,24 @@ local function createGUI()
     CloseBtn.Parent = TitleBar
     
     local CloseCorner = Instance.new("UICorner")
-    CloseCorner.CornerRadius = UDim.new(0, 15)
+    CloseCorner.CornerRadius = UDim.new(0, 17)
     CloseCorner.Parent = CloseBtn
     
-    -- Content Frame
-    local ContentFrame = Instance.new("Frame")
+    -- Content Frame with ScrollingFrame
+    local ContentFrame = Instance.new("ScrollingFrame")
     ContentFrame.Name = "Content"
-    ContentFrame.Size = UDim2.new(1, 0, 1, -45)
-    ContentFrame.Position = UDim2.new(0, 0, 0, 45)
+    ContentFrame.Size = UDim2.new(1, 0, 1, -50)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 50)
     ContentFrame.BackgroundTransparency = 1
+    ContentFrame.BorderSizePixel = 0
+    ContentFrame.ScrollBarThickness = 6
+    ContentFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
     ContentFrame.Parent = MainFrame
     
     -- Status Label
     local StatusLabel = Instance.new("TextLabel")
     StatusLabel.Name = "Status"
-    StatusLabel.Size = UDim2.new(0.9, 0, 0, 25)
+    StatusLabel.Size = UDim2.new(0.9, 0, 0, 30)
     StatusLabel.Position = UDim2.new(0.05, 0, 0, 5)
     StatusLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     StatusLabel.BorderSizePixel = 0
@@ -566,7 +1017,7 @@ local function createGUI()
     StatusLabel.Parent = ContentFrame
     
     local StatusCorner = Instance.new("UICorner")
-    StatusCorner.CornerRadius = UDim.new(0, 5)
+    StatusCorner.CornerRadius = UDim.new(0, 8)
     StatusCorner.Parent = StatusLabel
     
     -- Buttons
@@ -589,6 +1040,12 @@ local function createGUI()
                 end
             end
         end, Color3.fromRGB(0, 191, 255)},
+        {"🏝️ TP to Spawn", function() teleportToIsland("Spawn") end, Color3.fromRGB(0, 191, 255)},
+        {"🌊 TP to Moosewood", function() teleportToIsland("Moosewood") end, Color3.fromRGB(34, 139, 34)},
+        {"🌹 TP to Roslit Bay", function() teleportToIsland("Roslit Bay") end, Color3.fromRGB(255, 20, 147)},
+        {"❄️ TP to Snowcap", function() teleportToIsland("Snowcap Island") end, Color3.fromRGB(135, 206, 250)},
+        {"🏜️ TP to Vertigo", function() teleportToIsland("Vertigo") end, Color3.fromRGB(139, 69, 19)},
+        {"🗂️ Teleport Menu", function() createTeleportMenu() end, Color3.fromRGB(128, 0, 128)},
         {"🚤 Spawn Small Boat", function() spawnBoat("Small Boat") end, Color3.fromRGB(0, 122, 255)},
         {"🛥️ Spawn Large Boat", function() spawnBoat("Large Boat") end, Color3.fromRGB(88, 86, 214)},
         {"❌ Despawn Boat", despawnBoat, Color3.fromRGB(255, 45, 85)},
@@ -598,8 +1055,8 @@ local function createGUI()
     for i, data in ipairs(buttonData) do
         local Button = Instance.new("TextButton")
         Button.Name = "Button" .. i
-        Button.Size = UDim2.new(0.9, 0, 0, 40)
-        Button.Position = UDim2.new(0.05, 0, 0, 35 + (i-1) * 50)
+        Button.Size = UDim2.new(0.9, 0, 0, 42)
+        Button.Position = UDim2.new(0.05, 0, 0, 40 + (i-1) * 50)
         Button.BackgroundColor3 = data[3]
         Button.BorderSizePixel = 0
         Button.Text = data[1]
@@ -609,7 +1066,7 @@ local function createGUI()
         Button.Parent = ContentFrame
         
         local ButtonCorner = Instance.new("UICorner")
-        ButtonCorner.CornerRadius = UDim.new(0, 8)
+        ButtonCorner.CornerRadius = UDim.new(0, 10)
         ButtonCorner.Parent = Button
         
         Button.MouseButton1Click:Connect(data[2])
@@ -624,46 +1081,82 @@ local function createGUI()
             )
             TweenService:Create(Button, TweenInfo.new(0.2), {
                 BackgroundColor3 = hoverColor,
-                Size = UDim2.new(0.92, 0, 0, 42)
+                Size = UDim2.new(0.92, 0, 0, 44)
             }):Play()
         end)
         
         Button.MouseLeave:Connect(function()
             TweenService:Create(Button, TweenInfo.new(0.2), {
                 BackgroundColor3 = data[3],
-                Size = UDim2.new(0.9, 0, 0, 40)
+                Size = UDim2.new(0.9, 0, 0, 42)
             }):Play()
         end)
     end
     
-    -- Variables for minimize functionality
-    local isMinimized = false
-    local originalSize = MainFrame.Size
-    local minimizedSize = UDim2.new(0, 300, 0, 40)
+    -- Variables for panel visibility
+    local isPanelVisible = false
     
-    -- Minimize functionality
-    MinimizeBtn.MouseButton1Click:Connect(function()
-        isMinimized = not isMinimized
+    -- Floating Icon Click Functionality
+    FloatingIcon.MouseButton1Click:Connect(function()
+        isPanelVisible = not isPanelVisible
         
-        if isMinimized then
-            MinimizeBtn.Text = "+"
-            ContentFrame.Visible = false
-            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {
-                Size = minimizedSize
+        if isPanelVisible then
+            MainFrame.Visible = true
+            MainFrame.Size = UDim2.new(0, 0, 0, 0)
+            MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+            
+            -- Animate opening
+            TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, 320, 0, 550),
+                Position = UDim2.new(0.5, -160, 0.5, -275)
             }):Play()
+            
+            -- Change icon
+            FloatingIcon.Text = "📱"
+            FloatingIcon.BackgroundColor3 = Color3.fromRGB(255, 149, 0)
         else
-            MinimizeBtn.Text = "−"
-            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {
-                Size = originalSize
+            -- Animate closing
+            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+                Size = UDim2.new(0, 0, 0, 0),
+                Position = UDim2.new(0.5, 0, 0.5, 0)
             }):Play()
+            
             task.wait(0.3)
-            ContentFrame.Visible = true
+            MainFrame.Visible = false
+            
+            -- Change icon back
+            FloatingIcon.Text = "🎣"
+            FloatingIcon.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
         end
     end)
     
     -- Close functionality
     CloseBtn.MouseButton1Click:Connect(function()
-        ScreenGui:Destroy()
+        isPanelVisible = false
+        TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0.5, 0, 0.5, 0)
+        }):Play()
+        
+        task.wait(0.3)
+        MainFrame.Visible = false
+        
+        -- Change icon back
+        FloatingIcon.Text = "🎣"
+        FloatingIcon.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    end)
+    
+    -- Icon hover effects
+    FloatingIcon.MouseEnter:Connect(function()
+        TweenService:Create(FloatingIcon, TweenInfo.new(0.2), {
+            Size = UDim2.new(0, 65, 0, 65)
+        }):Play()
+    end)
+    
+    FloatingIcon.MouseLeave:Connect(function()
+        TweenService:Create(FloatingIcon, TweenInfo.new(0.2), {
+            Size = UDim2.new(0, 60, 0, 60)
+        }):Play()
     end)
     
     -- Update status function
@@ -672,18 +1165,21 @@ local function createGUI()
         StatusLabel.TextColor3 = color or Color3.fromRGB(0, 255, 127)
     end
     
-    -- Floating animation
-    spawn(function()
-        local floating = true
-        while MainFrame.Parent and floating do
-            TweenService:Create(MainFrame, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-                Position = MainFrame.Position + UDim2.new(0, 0, 0, 3)
+    -- Gentle floating animation for the icon only
+    task.spawn(function()
+        while FloatingIcon.Parent do
+            TweenService:Create(FloatingIcon, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                Rotation = 5
             }):Play()
-            task.wait(2)
+            task.wait(3)
+            TweenService:Create(FloatingIcon, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                Rotation = -5
+            }):Play()
+            task.wait(3)
         end
     end)
     
-    print("✅ Enhanced GUI created successfully with minimize and floating effects")
+    print("✅ Enhanced GUI created with floating icon toggle")
 end
 
 -- Run diagnostics on startup
@@ -737,7 +1233,13 @@ _G.FishingScript = {
     getCurrentRod = getCurrentRod,
     getRodStats = getRodStats,
     getRemotes = getRemotes,
-    runDiagnostics = runDiagnostics
+    runDiagnostics = runDiagnostics,
+    teleportToLocation = teleportToLocation,
+    teleportToPlayer = teleportToPlayer,
+    teleportToIsland = teleportToIsland,
+    getAvailableIslands = getAvailableIslands,
+    getAvailablePlayers = getAvailablePlayers,
+    createTeleportMenu = createTeleportMenu
 }
 
 -- Initialize
@@ -746,6 +1248,10 @@ print("📋 Available commands:")
 print("  _G.FishingScript.startAutoFish() - Start auto fishing")
 print("  _G.FishingScript.stopAutoFish() - Stop auto fishing")
 print("  _G.FishingScript.modifyRodStats(999) - Modify rod stats")
+print("  _G.FishingScript.createTeleportMenu() - Open teleport menu")
+print("  _G.FishingScript.teleportToIsland('IslandName') - Teleport to island")
+print("  _G.FishingScript.teleportToPlayer('PlayerName') - Teleport to player")
+print("  _G.FishingScript.getAvailableIslands() - List available islands")
 print("  _G.FishingScript.runDiagnostics() - Run diagnostics")
 
 -- Create GUI and run diagnostics
