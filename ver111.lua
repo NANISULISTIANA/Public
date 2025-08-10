@@ -107,38 +107,140 @@ local function getRodStats(rod)
     return next(stats) and stats or nil
 end
 
--- Safe Rod Stats Modification
+-- Alternative Rod Stats Modification (Without Remote)
 local function modifyRodStats(multiplier)
     local rod = getCurrentRod()
     if not rod then
         warn("No rod found for stats modification")
+        if _G.updateStatus then
+            _G.updateStatus("❌ No rod found", Color3.fromRGB(255, 59, 48))
+        end
         return false
     end
-    
-    local stats = getRodStats(rod)
-    if not stats then
-        warn("No stats found in rod:", rod.Name)
-        return false
+
+    print("🔧 Attempting to modify rod:", rod.Name)
+    if _G.updateStatus then
+        _G.updateStatus("🔧 Modifying " .. rod.Name .. "...", Color3.fromRGB(255, 149, 0))
     end
-    
-    print("Found rod stats:", stats)
-    
-    local remotes = getRemotes()
-    if not remotes or not remotes.ModifyRodStats then
-        warn("ModifyRodStats remote not found")
-        return false
-    end
-    
-    local success = pcall(function()
-        remotes.ModifyRodStats:InvokeServer(rod, multiplier)
+
+    local success = false
+    local modifiedStats = {}
+
+    -- Method 1: Try to modify attributes directly
+    pcall(function()
+        for name, value in pairs(rod:GetAttributes()) do
+            if type(value) == "number" and value > 0 then
+                local newValue = value * multiplier
+                rod:SetAttribute(name, newValue)
+                modifiedStats[name] = {old = value, new = newValue}
+                success = true
+            end
+        end
     end)
-    
-    if success then
-        print("✅ Rod stats modified successfully")
-    else
-        warn("❌ Failed to modify rod stats")
+
+    -- Method 2: Try to modify NumberValues in Manifest
+    local manifest = rod:FindFirstChild("Manifest")
+    if manifest then
+        pcall(function()
+            for _, child in pairs(manifest:GetChildren()) do
+                if child:IsA("NumberValue") or child:IsA("IntValue") then
+                    local oldValue = child.Value
+                    if oldValue > 0 then
+                        child.Value = oldValue * multiplier
+                        modifiedStats[child.Name] = {old = oldValue, new = child.Value}
+                        success = true
+                    end
+                end
+            end
+        end)
+    end
+
+    -- Method 3: Try to modify Handle attributes
+    local handle = rod:FindFirstChild("Handle")
+    if handle then
+        pcall(function()
+            for name, value in pairs(handle:GetAttributes()) do
+                if type(value) == "number" and value > 0 then
+                    local newValue = value * multiplier
+                    handle:SetAttribute(name, newValue)
+                    modifiedStats[name] = {old = value, new = newValue}
+                    success = true
+                end
+            end
+        end)
+    end
+
+    -- Method 4: Try to find and modify Configuration objects
+    local function modifyConfigurations(parent)
+        for _, child in pairs(parent:GetChildren()) do
+            if child:IsA("Configuration") then
+                for _, config in pairs(child:GetChildren()) do
+                    if config:IsA("NumberValue") or config:IsA("IntValue") then
+                        local oldValue = config.Value
+                        if oldValue > 0 then
+                            config.Value = oldValue * multiplier
+                            modifiedStats[config.Name] = {old = oldValue, new = config.Value}
+                            success = true
+                        end
+                    end
+                end
+            end
+            -- Recursively check children
+            if #child:GetChildren() > 0 then
+                modifyConfigurations(child)
+            end
+        end
     end
     
+    pcall(function()
+        modifyConfigurations(rod)
+    end)
+
+    -- Method 5: Try to modify StringValues that contain numbers
+    pcall(function()
+        for _, child in pairs(rod:GetDescendants()) do
+            if child:IsA("StringValue") and tonumber(child.Value) then
+                local oldValue = tonumber(child.Value)
+                if oldValue and oldValue > 0 then
+                    child.Value = tostring(oldValue * multiplier)
+                    modifiedStats[child.Name] = {old = oldValue, new = oldValue * multiplier}
+                    success = true
+                end
+            end
+        end
+    end)
+
+    -- Display results
+    if success then
+        print("✅ Rod stats modified successfully:")
+        for statName, values in pairs(modifiedStats) do
+            print("  " .. statName .. ": " .. values.old .. " → " .. values.new)
+        end
+        if _G.updateStatus then
+            _G.updateStatus("✅ Rod stats modified! (x" .. multiplier .. ")", Color3.fromRGB(0, 255, 127))
+        end
+    else
+        warn("❌ No modifiable stats found in rod")
+        print("🔍 Rod structure:")
+        local function printStructure(obj, indent)
+            indent = indent or ""
+            for _, child in pairs(obj:GetChildren()) do
+                print(indent .. "- " .. child.Name .. " (" .. child.ClassName .. ")")
+                if child.ClassName == "NumberValue" or child.ClassName == "IntValue" then
+                    print(indent .. "  Value: " .. tostring(child.Value))
+                end
+                if #child:GetChildren() > 0 and #indent < 8 then
+                    printStructure(child, indent .. "  ")
+                end
+            end
+        end
+        printStructure(rod)
+        
+        if _G.updateStatus then
+            _G.updateStatus("❌ No modifiable stats found", Color3.fromRGB(255, 59, 48))
+        end
+    end
+
     return success
 end
 
@@ -347,7 +449,7 @@ local function createGUI()
     -- Main Frame
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 300, 0, 420)
+    MainFrame.Size = UDim2.new(0, 300, 0, 470)
     MainFrame.Position = UDim2.new(0, 50, 0, 50)
     MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     MainFrame.BorderSizePixel = 0
@@ -472,6 +574,21 @@ local function createGUI()
         {"🎣 Start Auto Fish", startAutoFish, Color3.fromRGB(0, 200, 83)},
         {"⏹️ Stop Auto Fish", stopAutoFish, Color3.fromRGB(255, 59, 48)},
         {"⚡ Modify Rod Stats (x999)", function() modifyRodStats(999) end, Color3.fromRGB(255, 149, 0)},
+        {"🔍 Inspect Rod Structure", function() 
+            local rod = getCurrentRod()
+            if rod then
+                print("🔍 Inspecting rod:", rod.Name)
+                print("📊 Current stats:", getRodStats(rod))
+                if _G.updateStatus then
+                    _G.updateStatus("🔍 Rod inspection in console", Color3.fromRGB(0, 191, 255))
+                end
+            else
+                warn("No rod found to inspect")
+                if _G.updateStatus then
+                    _G.updateStatus("❌ No rod to inspect", Color3.fromRGB(255, 59, 48))
+                end
+            end
+        end, Color3.fromRGB(0, 191, 255)},
         {"🚤 Spawn Small Boat", function() spawnBoat("Small Boat") end, Color3.fromRGB(0, 122, 255)},
         {"🛥️ Spawn Large Boat", function() spawnBoat("Large Boat") end, Color3.fromRGB(88, 86, 214)},
         {"❌ Despawn Boat", despawnBoat, Color3.fromRGB(255, 45, 85)},
